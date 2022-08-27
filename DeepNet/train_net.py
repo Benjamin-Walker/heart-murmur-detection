@@ -1,9 +1,5 @@
 import sys
 
-
-sys.path.insert(0, "/home/walkerb1/project/physio")
-sys.path.insert(0, "/Users/benwalker/PycharmProjects/PhysionetChallenge2022")
-sys.path.insert(0, "/cluster/home/bwalke/physio/")
 import torch
 
 from DeepNet.HumBugDB.lib.PyTorch.runTorch import (
