@@ -7,20 +7,20 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
-from FeaturesLabels.find_and_load_patient_files import (
+from DataProcessing.find_and_load_patient_files import (
     find_patient_files,
     load_patient_data,
 )
-from FeaturesLabels.label_extraction import get_murmur, get_outcome
-from FeaturesLabels.metadata_extraction import get_features
+from DataProcessing.label_extraction import get_murmur, get_outcome
+from DataProcessing.metadata_extraction import get_features
 
 
-def stratified_test_val_split(
+def stratified_test_vali_split(
     stratified_features: list,
     data_directory: str,
     out_directory: str,
     test_size: float,
-    val_size: float,
+    vali_size: float,
     random_state: int,
 ):
     """Split the data in data_directory into train and test, stratifying over
@@ -119,10 +119,10 @@ def stratified_test_val_split(
         random_state=random_state,
         stratify=complete_pd["stratify_column"],
     )
-    val_split = val_size / (1 - test_size)
+    vali_split = vali_size / (1 - test_size)
     complete_pd_train, complete_pd_val = train_test_split(
         complete_pd_train,
-        test_size=val_split,
+        test_size=vali_split,
         random_state=random_state + 1,
         stratify=complete_pd_train["stratify_column"],
     )
@@ -132,7 +132,7 @@ def stratified_test_val_split(
             text_file.write(feature + ", ")
     # Save the files.
     os.makedirs(os.path.join(out_directory, "train_data"))
-    os.makedirs(os.path.join(out_directory, "val_data"))
+    os.makedirs(os.path.join(out_directory, "vali_data"))
     os.makedirs(os.path.join(out_directory, "test_data"))
     for f in complete_pd_train["id"]:
         copy_files(
@@ -144,7 +144,7 @@ def stratified_test_val_split(
         copy_files(
             data_directory,
             f,
-            os.path.join(out_directory, "val_data/"),
+            os.path.join(out_directory, "vali_data/"),
         )
     for f in complete_pd_test["id"]:
         copy_files(
@@ -185,17 +185,17 @@ if __name__ == "__main__":
     my_parser.add_argument(
         "--data_directory",
         type=str,
-        required=True,
         help="The directory containing the data you wish to split.",
+        default="physionet.org/files/circor-heart-sound/1.0.3/training_data",
     )
     my_parser.add_argument(
         "--out_directory",
         type=str,
-        required=True,
         help="The directory to store the split data.",
+        default="data/stratified_data",
     )
     my_parser.add_argument(
-        "--val_size", type=float, default=0.16, help="The size of the test split."
+        "--vali_size", type=float, default=0.16, help="The size of the test split."
     )
     my_parser.add_argument(
         "--test_size", type=float, default=0.2, help="The size of the test split."
@@ -208,4 +208,4 @@ if __name__ == "__main__":
     stratified_features = ["Normal", "Abnormal", "Absent", "Present", "Unknown"]
 
     # Create the test split.
-    stratified_test_val_split(stratified_features, **vars(args))
+    stratified_test_vali_split(stratified_features, **vars(args))

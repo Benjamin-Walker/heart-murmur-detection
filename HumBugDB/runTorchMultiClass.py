@@ -8,11 +8,10 @@ import torch.optim as optim
 from sklearn.metrics import accuracy_score
 from torch.utils.data import DataLoader, TensorDataset
 
-import DeepNet.config as config
-from DeepNet import net_config as config_pytorch
-from DeepNet.HumBugDB.lib.PyTorch.ResNetDropoutSource import resnet50dropout
-from DeepNet.HumBugDB.lib.PyTorch.ResNetSource import resnet50
-from DeepNet.HumBugDB.lib.PyTorch.vggish.vggish import VGGish
+import net_config as config_pytorch
+from HumBugDB.ResNetDropoutSource import resnet50dropout
+from HumBugDB.ResNetSource import resnet50
+from HumBugDB.vggish.vggish import VGGish
 
 
 # Resnet with full dropout
@@ -129,25 +128,13 @@ class VGGishDropoutFeatB(nn.Module):
         return x
 
 
-def build_dataloader(
-    x_train, y_train, x_val=None, y_val=None, shuffle=True, n_channels=1
-):
-    x_train = torch.tensor(x_train).float()
-    if n_channels == 3:
-        x_train = x_train.repeat(
-            1, 3, 1, 1
-        )  # Repeat across 3 channels to match ResNet pre-trained model expectation
-    y_train = torch.tensor(y_train, dtype=torch.float)
+def build_dataloader(x_train, y_train, x_val=None, y_val=None, shuffle=True):
     train_dataset = TensorDataset(x_train, y_train)
     train_loader = DataLoader(
         train_dataset, batch_size=config_pytorch.batch_size, shuffle=shuffle
     )
 
     if x_val is not None:
-        x_val = torch.tensor(x_val).float()
-        if n_channels == 3:
-            x_val = x_val.repeat(1, 3, 1, 1)
-        y_val = torch.tensor(y_val, dtype=torch.float)
         val_dataset = TensorDataset(x_val, y_val)
         val_loader = DataLoader(
             val_dataset, batch_size=config_pytorch.batch_size, shuffle=shuffle
@@ -165,11 +152,13 @@ def train_model(
     y_val=None,
     model=Resnet(config_pytorch.n_classes),
     model_name="test",
+    model_dir="models",
 ):
+    if not os.path.isdir(model_dir):
+        os.makedirs(model_dir)
+
     if x_val is not None:  # TODO: check dimensions when supplying validation data.
-        train_loader, val_loader = build_dataloader(
-            x_train, y_train, x_val, y_val, n_channels=model.n_channels
-        )
+        train_loader, val_loader = build_dataloader(x_train, y_train, x_val, y_val)
 
     else:
         train_loader = build_dataloader(x_train, y_train, n_channels=model.n_channels)
@@ -185,29 +174,19 @@ def train_model(
 
     model = model.to(device)
 
-    #     criterion = nn.BCELoss()  # Let's use CE loss for multiclass compatibility
     if clas_weight is not None:
         print("Applying class weights:", clas_weight)
         clas_weight = torch.tensor([clas_weight]).squeeze().float().to(device)
-    criterion = nn.CrossEntropyLoss(
-        weight=clas_weight
-    )  # Check if this loads correctly with weights=None
-
-    # m = nn.LogSoftmax(dim=1)
-    # criterion = nn.NLLLoss()
+    criterion = nn.CrossEntropyLoss(weight=clas_weight)
 
     optimiser = optim.Adam(model.parameters(), lr=config_pytorch.lr)
-    # optimiser = torch.optim.SGD(model.parameters(), lr=0.1, momentum=0.9)
 
     all_train_loss = []
     all_train_acc = []
     all_val_loss = []
     all_val_acc = []
     best_val_acc = -np.inf
-
-    # best_train_loss = np.inf
     best_train_acc = -np.inf
-
     overrun_counter = 0
 
     for e in range(config_pytorch.epochs):
@@ -217,14 +196,13 @@ def train_model(
         all_y = []
         all_y_pred = []
         for batch_i, inputs in enumerate(train_loader):
-            # Necessary in order to handle single and multi input feature spaces
-            x = [xi.to(device).detach() for xi in inputs[:-1]]
-            y = inputs[-1].to(device).detach()
+            x = inputs[:-1][0].repeat(1, 3, 1, 1)
+            y = inputs[1].float()
             if len(x) == 1:
                 x = x[0]
             optimiser.zero_grad()
             y_pred = model(x)
-            loss = criterion(y_pred, y.squeeze())
+            loss = criterion(y_pred, y)
             loss.backward()
             optimiser.step()
             train_loss += loss.item()
@@ -259,11 +237,11 @@ def train_model(
             checkpoint_name = f"model_{model_name}.pth"
             torch.save(
                 model.state_dict(),
-                os.path.join(config.model_dir, "pytorch", checkpoint_name),
+                os.path.join(model_dir, "pytorch", checkpoint_name),
             )
             print(
                 "Saving model to:",
-                os.path.join(config.model_dir, "pytorch", checkpoint_name),
+                os.path.join(model_dir, "pytorch", checkpoint_name),
             )
             best_train_acc = train_acc
             if x_val is not None:
@@ -293,7 +271,7 @@ def train_model(
     return model
 
 
-def test_model(model, test_loader, criterion, clas_threshold=0.5, device=None):
+def test_model(model, test_loader, criterion, device=None):
     with torch.no_grad():
         if device is None:
             torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -304,10 +282,11 @@ def test_model(model, test_loader, criterion, clas_threshold=0.5, device=None):
         all_y = []
         all_y_pred = []
         counter = 1
-        for x, y in test_loader:
-            x, y = x.to(device), y.to(device)
+        for inputs in test_loader:
+            x = inputs[:-1][0].repeat(1, 3, 1, 1)
+            y = inputs[1].float()
 
-            y_pred = model(x).squeeze()
+            y_pred = model(x)
 
             loss = criterion(y_pred, y)
 
@@ -333,58 +312,11 @@ def test_model(model, test_loader, criterion, clas_threshold=0.5, device=None):
         return test_loss, test_acc
 
 
-def evaluate_model(model, X_test, y_test, n_samples):
-    # Determine number of classes: warning potential issue if predicted classes dont match
-    # number of classes in y_test
-    n_classes = config_pytorch.n_classes
-
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(f"Evaluating on {device}")
-
-    x_test = torch.tensor(X_test).float()
-    if model.n_channels == 3:
-        x_test = x_test.repeat(1, 3, 1, 1)
-
-    y_test = torch.tensor(y_test).float()
-    test_dataset = TensorDataset(x_test, y_test)
-    test_loader = DataLoader(
-        test_dataset, batch_size=128, shuffle=False
-    )  # Larger batch size for eval.
-
-    y_preds_all = np.zeros([n_samples, len(y_test), n_classes])
-    model.eval()  # Important to not leak info from batch norm layers and cause other issues
-
-    for n in range(n_samples):
-        all_y_pred = []
-        all_y = []
-        for x, y in test_loader:
-            x, y = x.to(device), y.to(device)
-
-            y_pred = model(x).squeeze()
-            all_y.append(y.cpu().detach())
-
-            all_y_pred.append(y_pred.cpu().detach())
-
-            del x
-            del y
-            del y_pred
-
-        all_y_pred = torch.cat(all_y_pred)
-        all_y = torch.cat(all_y)
-
-        y_preds_all[n] = np.array(all_y_pred)
-
-    return y_preds_all
-
-
 def load_model(filepath, model=Resnet(config_pytorch.n_classes)):
     # Instantiate model to inspect
     device = torch.device(
         "cuda:0" if torch.cuda.is_available() else torch.device("cpu")
     )
-    # print(f'Training on {device}')
-
-    # model = ResnetDropoutFull(config_pytorch.n_classes)
     if torch.cuda.device_count() > 1:
         print("Using data parallel")
         model = nn.DataParallel(
@@ -400,35 +332,3 @@ def load_model(filepath, model=Resnet(config_pytorch.n_classes)):
     model.load_state_dict(torch.load(filepath, map_location=map_location))
 
     return model
-
-
-def evaluate_model_aggregated(model, X_test, y_test, n_samples):
-    n_classes = 8
-    preds_aggregated_by_mean = []
-    y_aggregated_prediction_by_mean = []
-    y_target_aggregated = []
-
-    for idx, recording in enumerate(X_test):
-        n_target_windows = (
-            len(recording) // 2
-        )  # Calculate expected length: discard edge
-        y_target = np.repeat(
-            y_test[idx], n_target_windows
-        )  # Create y array of correct length
-        preds = evaluate_model(
-            model, recording, np.repeat(y_test[idx], len(recording)), n_samples
-        )  # Sample BNN
-        preds = np.mean(preds, axis=0)  # Average across BNN samples
-        preds = preds[: n_target_windows * 2, :]  # Discard edge case
-        preds = np.mean(
-            preds.reshape(-1, 2, n_classes), axis=1
-        )  # Average every 2 elements, across n_classes
-        preds_y = np.argmax(preds, axis=1)  # Append argmax prediction (label output)
-        y_aggregated_prediction_by_mean.append(preds_y)
-        preds_aggregated_by_mean.append(preds)  # Append prob (or log-prob/other space)
-        y_target_aggregated.append(y_target)  # Append y_target
-    return (
-        np.concatenate(preds_aggregated_by_mean),
-        np.concatenate(y_aggregated_prediction_by_mean),
-        np.concatenate(y_target_aggregated),
-    )

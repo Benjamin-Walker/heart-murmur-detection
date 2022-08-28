@@ -1,6 +1,6 @@
 import os
 
-from helper_code import is_integer
+from DataProcessing.helper_code import is_integer
 
 
 # Find patient data files.

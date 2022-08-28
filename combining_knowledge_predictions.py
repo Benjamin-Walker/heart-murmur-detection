@@ -2,15 +2,15 @@ import sys
 
 
 sys.path.insert(0, "/home/walkerb1/project/physio")
-sys.path.insert(0, "/Users/benwalker/PycharmProjects/PhysionetChallenge2022")
+sys.path.insert(0, "/")
 import numpy as np
 import torch
 from evaluate_model import compute_weighted_accuracy
 from tqdm import tqdm
 
-from DeepNet.HumBugDB.lib.PyTorch.runTorch import load_model
-from DeepNet.net_feature_extractor import patient_feature_loader
-from DeepNet.train_net import create_model
+from DataProcessing.net_feature_extractor import patient_feature_loader
+from HumBugDB.runTorch import load_model
+from train_net import create_model
 
 
 def calc_patient_output_know(model, recording_spectrograms, repeats, weighted):
