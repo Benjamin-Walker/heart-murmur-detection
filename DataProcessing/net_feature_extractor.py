@@ -9,8 +9,8 @@ from DataProcessing.find_and_load_patient_files import (
     find_patient_files,
     load_patient_data,
 )
+from DataProcessing.helper_code import get_num_locations, load_wav_file
 from DataProcessing.label_extraction import get_murmur, get_outcome
-from DataProcessing.XGBoost_features.metadata import get_num_locations, load_wav_file
 from HumBugDB.LogMelSpecs.compute_LogMelSpecs import waveform_to_examples
 
 

@@ -66,17 +66,6 @@ def load_recordings(data_folder, data, get_frequencies=False):
         return recordings
 
 
-# Get patient ID from patient data.
-def get_patient_id(data):
-    patient_id = None
-    for i, l in enumerate(data.split("\n")):
-        if i == 0:
-            patient_id = l.split(" ")[0]
-        else:
-            break
-    return patient_id
-
-
 # Get number of recording locations from patient data.
 def get_num_locations(data):
     num_locations = None
@@ -86,17 +75,6 @@ def get_num_locations(data):
         else:
             break
     return num_locations
-
-
-# Get frequency from patient data.
-def get_frequency(data):
-    frequency = None
-    for i, l in enumerate(data.split("\n")):
-        if i == 0:
-            frequency = float(l.split(" ")[2])
-        else:
-            break
-    return frequency
 
 
 # Get recording locations from patient data.
@@ -123,58 +101,3 @@ def sanitize_binary_value(x):
         return 1
     else:
         return 0
-
-
-# Santize scalar values from Challenge outputs.
-def sanitize_scalar_value(x):
-    x = (
-        str(x).replace('"', "").replace("'", "").strip()
-    )  # Remove any quotes or invisible characters.
-    if is_finite_number(x) or (is_number(x) and np.isinf(float(x))):
-        return float(x)
-    else:
-        return 0.0
-
-
-# Save Challenge outputs.
-def save_challenge_outputs(filename, patient_id, classes, labels, probabilities):
-    # Format Challenge outputs.
-    patient_string = "#{}".format(patient_id)
-    class_string = ",".join(str(c) for c in classes)
-    label_string = ",".join(str(label) for label in labels)
-    probabilities_string = ",".join(str(p) for p in probabilities)
-    output_string = (
-        patient_string
-        + "\n"
-        + class_string
-        + "\n"
-        + label_string
-        + "\n"
-        + probabilities_string
-        + "\n"
-    )
-
-    # Write the Challenge outputs.
-    with open(filename, "w") as f:
-        f.write(output_string)
-
-
-# Load Challenge outputs.
-def load_challenge_outputs(filename):
-    with open(filename, "r") as f:
-        for i, text in enumerate(f):
-            if i == 0:
-                patient_id = text.replace("#", "").strip()
-            elif i == 1:
-                classes = tuple(entry.strip() for entry in text.split(","))
-            elif i == 2:
-                labels = tuple(
-                    sanitize_binary_value(entry) for entry in text.split(",")
-                )
-            elif i == 3:
-                probabilities = tuple(
-                    sanitize_scalar_value(entry) for entry in text.split(",")
-                )
-            else:
-                break
-    return patient_id, classes, labels, probabilities
