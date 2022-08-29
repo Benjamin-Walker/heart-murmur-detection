@@ -1,10 +1,10 @@
 import argparse
 import os
 
-from DBRes import calculate_dbres_scores
+from dbres import calculate_dbres_scores
 from stratified_data_split import stratified_test_vali_split
 from train_resnet import run_model_training
-from XGBoost_integration import calculate_xgboost_integration_scores
+from xgboost_integration import calculate_xgboost_integration_scores
 
 
 def main(

@@ -12,7 +12,7 @@ from DataProcessing.find_and_load_patient_files import (
 from DataProcessing.helper_code import load_recordings
 from DataProcessing.label_extraction import get_murmur
 from DataProcessing.XGBoost_features.extract_all_features import extract_all_features
-from DBRes import calculate_dbres_output
+from dbres import calculate_dbres_output
 from ModelEvaluation.evaluate_model import evaluate_model
 
 
