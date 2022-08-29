@@ -12,7 +12,7 @@ from DataProcessing.find_and_load_patient_files import (
     load_patient_data,
 )
 from DataProcessing.label_extraction import get_murmur, get_outcome
-from DataProcessing.metadata_extraction import get_features
+from DataProcessing.XGBoost_features.metadata import get_metadata
 
 
 def stratified_test_vali_split(
@@ -64,7 +64,7 @@ def stratified_test_vali_split(
         # Load the current patient data and recordings.
         current_patient_data = load_patient_data(patient_files[i])
         # Extract features.
-        current_features = get_features(current_patient_data)
+        current_features = get_metadata(current_patient_data)
         current_features = np.insert(
             current_features, 0, current_patient_data.split(" ")[0]
         )
@@ -181,29 +181,29 @@ def copy_files(data_directory: str, ident: str, out_directory: str) -> None:
 
 if __name__ == "__main__":
 
-    my_parser = argparse.ArgumentParser(prog="StratifiedDataSplit")
-    my_parser.add_argument(
+    parser = argparse.ArgumentParser(prog="StratifiedDataSplit")
+    parser.add_argument(
         "--data_directory",
         type=str,
         help="The directory containing the data you wish to split.",
         default="physionet.org/files/circor-heart-sound/1.0.3/training_data",
     )
-    my_parser.add_argument(
+    parser.add_argument(
         "--out_directory",
         type=str,
         help="The directory to store the split data.",
         default="data/stratified_data",
     )
-    my_parser.add_argument(
+    parser.add_argument(
         "--vali_size", type=float, default=0.16, help="The size of the test split."
     )
-    my_parser.add_argument(
+    parser.add_argument(
         "--test_size", type=float, default=0.2, help="The size of the test split."
     )
-    my_parser.add_argument(
+    parser.add_argument(
         "--random_state", type=int, default=5678, help="The random state for the split."
     )
-    args = my_parser.parse_args()
+    args = parser.parse_args()
 
     stratified_features = ["Normal", "Abnormal", "Absent", "Present", "Unknown"]
 

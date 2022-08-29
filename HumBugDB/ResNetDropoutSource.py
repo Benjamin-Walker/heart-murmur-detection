@@ -6,7 +6,7 @@ import torch.nn.functional as F  # For dropout
 from torch import Tensor
 from torch.hub import load_state_dict_from_url
 
-import net_config as config_pytorch
+from config import hyperparameters
 from HumBugDB.ResNetSource import conv1x1, conv3x3
 
 
@@ -34,7 +34,7 @@ class BasicBlockDropout(nn.Module):
         base_width: int = 64,
         dilation: int = 1,
         norm_layer: Optional[Callable[..., nn.Module]] = None,
-        dropout_p: float = config_pytorch.dropout,  # Added manually to init
+        dropout_p: float = hyperparameters.dropout,  # Added manually to init
     ) -> None:
         super(BasicBlockDropout, self).__init__()
         if norm_layer is None:
@@ -96,7 +96,7 @@ class BottleneckDropout(nn.Module):
         base_width: int = 64,
         dilation: int = 1,
         norm_layer: Optional[Callable[..., nn.Module]] = None,
-        dropout_p: float = config_pytorch.dropout,  # Added manually to init
+        dropout_p: float = hyperparameters.dropout,  # Added manually to init
     ) -> None:
         super(BottleneckDropout, self).__init__()
         if norm_layer is None:
@@ -154,7 +154,7 @@ class ResNet(nn.Module):
         width_per_group: int = 64,
         replace_stride_with_dilation: Optional[List[bool]] = None,
         norm_layer: Optional[Callable[..., nn.Module]] = None,
-        dropout_p: float = config_pytorch.dropout,  # Added manually to init
+        dropout_p: float = hyperparameters.dropout,  # Added manually to init
     ) -> None:
         super(ResNet, self).__init__()
         if norm_layer is None:

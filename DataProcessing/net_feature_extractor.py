@@ -10,8 +10,8 @@ from DataProcessing.find_and_load_patient_files import (
     load_patient_data,
 )
 from DataProcessing.label_extraction import get_murmur, get_outcome
-from DataProcessing.metadata_extraction import get_num_locations, load_wav_file
-from HumBugDB.vggish.vggish_input import waveform_to_examples
+from DataProcessing.XGBoost_features.metadata import get_num_locations, load_wav_file
+from HumBugDB.LogMelSpecs.compute_LogMelSpecs import waveform_to_examples
 
 
 def net_feature_loader(
@@ -29,10 +29,10 @@ def net_feature_loader(
             for j in range(len(spectrograms_train[i])):
                 repeats[i] += len(spectrograms_train[i][j])
         murmurs_train = torch.repeat_interleave(
-            torch.Tensor(murmurs_train), repeats.to(torch.int32), dim=0
+            torch.Tensor(np.array(murmurs_train)), repeats.to(torch.int32), dim=0
         )
         outcomes_train = torch.repeat_interleave(
-            torch.Tensor(outcomes_train), repeats.to(torch.int32), dim=0
+            torch.Tensor(np.array(outcomes_train)), repeats.to(torch.int32), dim=0
         )
         spectrograms_train = torch.cat([x for xs in spectrograms_train for x in xs])
         torch.save(
@@ -51,14 +51,14 @@ def net_feature_loader(
             for j in range(len(spectrograms_test[i])):
                 repeats[i] += len(spectrograms_test[i][j])
         murmurs_test = torch.repeat_interleave(
-            torch.Tensor(murmurs_test), repeats.to(torch.int32), dim=0
+            torch.Tensor(np.array(murmurs_test)), repeats.to(torch.int32), dim=0
         )
         outcomes_test = torch.repeat_interleave(
-            torch.Tensor(outcomes_test), repeats.to(torch.int32), dim=0
+            torch.Tensor(np.array(outcomes_test)), repeats.to(torch.int32), dim=0
         )
         spectrograms_test = torch.cat([x for xs in spectrograms_test for x in xs])
-        murmurs_test = torch.Tensor(murmurs_test)
-        outcomes_test = torch.Tensor(outcomes_test)
+        murmurs_test = torch.Tensor(np.array(murmurs_test))
+        outcomes_test = torch.Tensor(np.array(outcomes_test))
         torch.save(spectrograms_test, os.path.join(spectrogram_directory, "spec_test"))
         torch.save(murmurs_test, os.path.join(spectrogram_directory, "murmurs_test"))
         torch.save(outcomes_test, os.path.join(spectrogram_directory, "outcomes_test"))
@@ -115,7 +115,7 @@ def load_spectrograms(data_directory, data):
         recording_file = entries[2]
         filename = os.path.join(data_directory, recording_file)
         recording, frequency = load_wav_file(filename)
-        recording = recording / 32767
+        recording = recording / 32768
         mel_spec = waveform_to_examples(recording, frequency)
         mel_specs.append(mel_spec)
     return mel_specs

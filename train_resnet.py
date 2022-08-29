@@ -2,6 +2,7 @@ import argparse
 
 import torch
 
+from config import hyperparameters
 from DataProcessing.net_feature_extractor import net_feature_loader
 from HumBugDB.runTorch import ResnetDropoutFull as ResnetDropoutBinary
 from HumBugDB.runTorch import ResnetFull as ResnetBinary
@@ -21,7 +22,7 @@ def create_model(model_name, num_classes):
             training = train_model_multi
     elif model_name == "resnet50dropout":
         if num_classes == 2:
-            model = ResnetDropoutBinary(dropout=0.3)
+            model = ResnetDropoutBinary(dropout=hyperparameters.dropout)
             training = train_model_binary
         else:
             model = ResnetDropoutMulti(num_classes)
@@ -146,25 +147,13 @@ def run_model_training(
             model=model,
             model_name=model_label,
             model_dir=model_dir,
+            sampler=True,
         )
     else:
         raise ValueError("classes_name must be one of outcome, murmur or knowledge.")
 
 
 if __name__ == "__main__":
-
-    """
-    recalc_features: whether to recalculate the spectrogram patches
-    train_data_directory: directory where the training patient data is located, only
-                       used if recalculating features
-    vali_data_directory: directory where the validation patient data is located, only
-                      used if recalculating features
-    model_name: the name of the model, currently either resnet50 or
-                resnet50dropout
-    model_label: name used when saving the model
-    classes_name: either outcome or murmur
-    weights: comma separated weights for the classes, e.g. 5,3,1
-    """
 
     parser = argparse.ArgumentParser(prog="TrainResNet")
     parser.add_argument(

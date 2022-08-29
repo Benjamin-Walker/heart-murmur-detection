@@ -5,9 +5,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from sklearn.metrics import balanced_accuracy_score
 from torch.utils.data import DataLoader, TensorDataset
+from tqdm import tqdm
 
-import net_config as config_pytorch
+from config import hyperparameters
 from HumBugDB.ResNetDropoutSource import resnet50dropout
 from HumBugDB.ResNetSource import resnet50
 
@@ -15,7 +17,7 @@ from HumBugDB.ResNetSource import resnet50
 class ResnetFull(nn.Module):
     def __init__(self):
         super(ResnetFull, self).__init__()
-        self.resnet = resnet50(pretrained=config_pytorch.pretrained)
+        self.resnet = resnet50(pretrained=hyperparameters.pretrained)
         self.n_channels = 3  # For building data correctly with dataloaders. Check if 1 works with pretrained=False
         # Remove final linear layer
         self.resnet = nn.Sequential(*(list(self.resnet.children())[:-1]))
@@ -35,7 +37,7 @@ class ResnetDropoutFull(nn.Module):
         super(ResnetDropoutFull, self).__init__()
         self.dropout = dropout
         self.resnet = resnet50dropout(
-            pretrained=config_pytorch.pretrained, dropout_p=self.dropout
+            pretrained=hyperparameters.pretrained, dropout_p=self.dropout
         )
         self.n_channels = 3  # For building data correctly with dataloaders. Check if 1 works with pretrained=False
         # Remove final linear layer
@@ -51,19 +53,44 @@ class ResnetDropoutFull(nn.Module):
         return x
 
 
-def build_dataloader(
-    x_train, y_train, x_val=None, y_val=None, shuffle=True, n_channels=1
-):
-    train_dataset = TensorDataset(x_train, y_train)
+def make_weights_for_balanced_classes(images, nclasses):
+    count = [0] * nclasses
+    for item in images:
+        count[torch.argmax(item[1])] += 1
+    weight_per_class = [0.0] * nclasses
+    N = float(sum(count))
+    for i in range(nclasses):
+        weight_per_class[i] = N / float(count[i])
+    weight = [0] * len(images)
+    for idx, val in enumerate(images):
+        weight[idx] = weight_per_class[torch.argmax(val[1])]
+    return weight
 
-    train_loader = DataLoader(
-        train_dataset, batch_size=config_pytorch.batch_size, shuffle=shuffle
-    )
+
+def build_dataloader(
+    x_train, y_train, x_val=None, y_val=None, shuffle=True, sampler=None
+):
+    x_train = torch.tensor(x_train).float()
+    y_train = torch.tensor(y_train).float()
+    train_dataset = TensorDataset(x_train, y_train)
+    if sampler is None:
+        train_loader = DataLoader(
+            train_dataset, batch_size=hyperparameters.batch_size, shuffle=shuffle
+        )
+    else:
+        weights = make_weights_for_balanced_classes(train_dataset, 2)
+        weights = torch.DoubleTensor(weights)
+        sampler = torch.utils.data.sampler.WeightedRandomSampler(weights, len(weights))
+        train_loader = DataLoader(
+            train_dataset, batch_size=hyperparameters.batch_size, sampler=sampler
+        )
 
     if x_val is not None:
+        x_val = torch.tensor(x_val).float()
+        y_val = torch.tensor(y_val).float()
         val_dataset = TensorDataset(x_val, y_val)
         val_loader = DataLoader(
-            val_dataset, batch_size=config_pytorch.batch_size, shuffle=shuffle
+            val_dataset, batch_size=hyperparameters.batch_size, shuffle=shuffle
         )
 
         return train_loader, val_loader
@@ -79,6 +106,7 @@ def train_model(
     model=ResnetDropoutFull(),
     model_name="test",
     model_dir="models",
+    sampler=None,
 ):
 
     if not os.path.isdir(model_dir):
@@ -86,13 +114,13 @@ def train_model(
 
     if x_val is not None:  # TODO: check dimensions when supplying validation data.
         train_loader, val_loader = build_dataloader(
-            x_train, y_train, x_val, y_val, n_channels=model.n_channels
+            x_train, y_train, x_val, y_val, sampler=sampler
         )
 
     else:
-        train_loader = build_dataloader(x_train, y_train, n_channels=model.n_channels)
+        train_loader = build_dataloader(x_train, y_train, sampler=sampler)
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     if torch.cuda.device_count() > 1:
         print("Using data parallel")
@@ -103,7 +131,7 @@ def train_model(
     model = model.to(device)
     # Change compatibility to other loss function, cross-test with main.
     criterion = nn.BCELoss()
-    optimiser = optim.Adam(model.parameters(), lr=config_pytorch.lr)
+    optimiser = optim.Adam(model.parameters(), lr=hyperparameters.lr)
 
     all_train_loss = []
     all_train_metric = []
@@ -114,20 +142,19 @@ def train_model(
     best_train_acc = -np.inf
 
     overrun_counter = 0
-    for e in range(config_pytorch.epochs):
+    for e in range(hyperparameters.epochs):
         train_loss = 0.0
         model.train()
 
         all_y = []
         all_y_pred = []
-        for batch_i, inputs in enumerate(train_loader):
+        for batch_i, inputs in tqdm(enumerate(train_loader), total=len(train_loader)):
 
             x = inputs[:-1][0].repeat(1, 3, 1, 1)
             y = torch.argmax(inputs[1], dim=1, keepdim=True).float()
 
             optimiser.zero_grad()
             y_pred = model(x)
-
             if clas_weight is not None:
                 criterion.weight = (clas_weight[1] - clas_weight[0]) * y + clas_weight[
                     0
@@ -150,14 +177,14 @@ def train_model(
 
         all_y = torch.cat(all_y)
         all_y_pred = torch.cat(all_y_pred)
-        train_metric = (
-            all_y[all_y == 0] == torch.round(all_y_pred[all_y == 0])
-        ).sum() / (all_y == 0).sum()
+        train_metric = balanced_accuracy_score(
+            all_y.numpy(), (all_y_pred.numpy() > 0.5).astype(float)
+        )
         all_train_metric.append(train_metric)
 
         if x_val is not None:
             val_loss, val_metric = test_model(
-                model, val_loader, clas_weight, criterion, 0.5, device=device
+                model, val_loader, clas_weight, criterion, device=device
             )
             all_val_loss.append(val_loss)
             all_val_metric.append(val_metric)
@@ -202,7 +229,7 @@ def train_model(
                 "Epoch: %d, Train Loss: %.8f, Train Acc: %.8f, overrun_counter %i"
                 % (e, train_loss / len(train_loader), train_metric, overrun_counter)
             )
-        if overrun_counter > config_pytorch.max_overrun:
+        if overrun_counter > hyperparameters.max_overrun:
             break
     return model
 
@@ -210,7 +237,7 @@ def train_model(
 def test_model(model, test_loader, clas_weight, criterion, device=None):
     with torch.no_grad():
         if device is None:
-            torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+            torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         test_loss = 0.0
         model.eval()
@@ -247,9 +274,9 @@ def test_model(model, test_loader, clas_weight, criterion, device=None):
 
         all_y = torch.cat(all_y)
         all_y_pred = torch.cat(all_y_pred)
-        test_metric = (
-            all_y[all_y == 0] == torch.round(all_y_pred[all_y == 0])
-        ).sum() / (all_y == 0).sum()
+        test_metric = balanced_accuracy_score(
+            all_y.numpy(), (all_y_pred.numpy() > 0.5).astype(float)
+        )
         test_loss = test_loss / len(test_loader)
 
     return test_loss, test_metric
@@ -257,9 +284,7 @@ def test_model(model, test_loader, clas_weight, criterion, device=None):
 
 def load_model(filepath, model=ResnetDropoutFull()):
     # Instantiate model to inspect
-    device = torch.device(
-        "cuda:0" if torch.cuda.is_available() else torch.device("cpu")
-    )
+    device = torch.device("cuda" if torch.cuda.is_available() else torch.device("cpu"))
 
     if torch.cuda.device_count() > 1:
         print("Using data parallel")

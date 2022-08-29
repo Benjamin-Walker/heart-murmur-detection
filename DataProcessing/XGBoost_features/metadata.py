@@ -198,7 +198,7 @@ def sanitize_binary_value(x):
 
 
 # Extract features from the data.
-def get_features(data):
+def get_metadata(data):
     # Extract the age group and replace with the (approximate) number of months for the middle of the age group.
     age_group = get_age(data)
 

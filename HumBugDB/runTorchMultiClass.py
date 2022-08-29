@@ -5,22 +5,20 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import balanced_accuracy_score
 from torch.utils.data import DataLoader, TensorDataset
+from tqdm import tqdm
 
-import net_config as config_pytorch
+from config import hyperparameters
 from HumBugDB.ResNetDropoutSource import resnet50dropout
 from HumBugDB.ResNetSource import resnet50
-from HumBugDB.vggish.vggish import VGGish
 
 
 # Resnet with full dropout
-
-
 class ResnetFull(nn.Module):
     def __init__(self, n_classes):
-        super(ResnetDropoutFull, self).__init__()
-        self.resnet = resnet50(pretrained=config_pytorch.pretrained)
+        super(ResnetFull, self).__init__()
+        self.resnet = resnet50(pretrained=hyperparameters.pretrained)
         self.n_channels = 3
         # Remove final linear layer
         self.resnet = nn.Sequential(*(list(self.resnet.children())[:-1]))
@@ -39,7 +37,7 @@ class ResnetDropoutFull(nn.Module):
         super(ResnetDropoutFull, self).__init__()
         self.dropout = dropout
         self.resnet = resnet50dropout(
-            pretrained=config_pytorch.pretrained, dropout_p=self.dropout
+            pretrained=hyperparameters.pretrained, dropout_p=self.dropout
         )
 
         self.n_channels = 3
@@ -59,7 +57,7 @@ class ResnetDropoutFull(nn.Module):
 class Resnet(nn.Module):
     def __init__(self, n_classes, dropout=0.2):
         super(Resnet, self).__init__()
-        self.resnet = resnet50(pretrained=config_pytorch.pretrained)
+        self.resnet = resnet50(pretrained=hyperparameters.pretrained)
         self.dropout = dropout
         self.n_channels = 3
         # Remove final linear layer
@@ -78,66 +76,18 @@ class Resnet(nn.Module):
         return x
 
 
-class VGGishDropout(nn.Module):
-    def __init__(self, n_classes, preprocess=False, dropout=0.2):
-        super(VGGishDropout, self).__init__()
-        self.model_urls = config_pytorch.vggish_model_urls
-        self.vggish = VGGish(
-            self.model_urls,
-            pretrained=config_pytorch.pretrained,
-            postprocess=False,
-            preprocess=preprocess,
-        )
-        self.dropout = dropout
-        self.n_channels = 1  # For building data correctly with dataloaders
-        self.fc2 = nn.Linear(128, n_classes)
-
-    def forward(self, x):
-        # (Batch, Segments, C, H, W) -> (Batch*Segments, C, H, W)
-        x = x.view(-1, 1, 96, 64)
-        x = self.vggish.forward(x)
-        x = self.fc2(F.dropout(x, p=self.dropout))
-        return x
-
-
-class VGGishDropoutFeatB(nn.Module):
-    def __init__(self, n_classes, preprocess=False, dropout=0.2):
-        super(VGGishDropoutFeatB, self).__init__()
-        self.model_urls = config_pytorch.vggish_model_urls
-        self.vggish = VGGish(
-            self.model_urls,
-            pretrained=config_pytorch.pretrained,
-            postprocess=False,
-            preprocess=preprocess,
-        )
-        # self.vggish = nn.Sequential(*(list(self.vggish.children())[2:])) # skip layers
-        self.vggish.embeddings = nn.Sequential(
-            *(list(self.vggish.embeddings.children())[2:])
-        )  # skip layers
-        self.dropout = dropout
-        self.n_channels = 1  # For building data correctly with dataloaders
-        self.fc1 = nn.Linear(128, n_classes)  # for multiclass
-        # For application to embeddings, see:
-        # https://github.com/tensorflow/models/blob/master/research/audioset/vggish/vggish_train_demo.py
-
-    def forward(self, x):
-        x = x.view(-1, 1, 30, 128)  # Feat B
-        x = self.vggish.forward(x)
-        x = self.fc1(F.dropout(x, p=self.dropout))
-        x = torch.sigmoid(x)
-        return x
-
-
 def build_dataloader(x_train, y_train, x_val=None, y_val=None, shuffle=True):
+    x_train = torch.tensor(x_train)
+    y_train = torch.tensor(y_train)
     train_dataset = TensorDataset(x_train, y_train)
     train_loader = DataLoader(
-        train_dataset, batch_size=config_pytorch.batch_size, shuffle=shuffle
+        train_dataset, batch_size=hyperparameters.batch_size, shuffle=shuffle
     )
 
     if x_val is not None:
         val_dataset = TensorDataset(x_val, y_val)
         val_loader = DataLoader(
-            val_dataset, batch_size=config_pytorch.batch_size, shuffle=shuffle
+            val_dataset, batch_size=hyperparameters.batch_size, shuffle=shuffle
         )
 
         return train_loader, val_loader
@@ -150,7 +100,7 @@ def train_model(
     clas_weight=None,
     x_val=None,
     y_val=None,
-    model=Resnet(config_pytorch.n_classes),
+    model=Resnet(hyperparameters.n_classes),
     model_name="test",
     model_dir="models",
 ):
@@ -163,7 +113,7 @@ def train_model(
     else:
         train_loader = build_dataloader(x_train, y_train, n_channels=model.n_channels)
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # print(f'Training on {device}')
 
     if torch.cuda.device_count() > 1:
@@ -179,7 +129,7 @@ def train_model(
         clas_weight = torch.tensor([clas_weight]).squeeze().float().to(device)
     criterion = nn.CrossEntropyLoss(weight=clas_weight)
 
-    optimiser = optim.Adam(model.parameters(), lr=config_pytorch.lr)
+    optimiser = optim.Adam(model.parameters(), lr=hyperparameters.lr)
 
     all_train_loss = []
     all_train_acc = []
@@ -189,15 +139,15 @@ def train_model(
     best_train_acc = -np.inf
     overrun_counter = 0
 
-    for e in range(config_pytorch.epochs):
+    for e in range(hyperparameters.epochs):
         train_loss = 0.0
         model.train()
 
         all_y = []
         all_y_pred = []
-        for batch_i, inputs in enumerate(train_loader):
+        for batch_i, inputs in tqdm(enumerate(train_loader), total=len(train_loader)):
             x = inputs[:-1][0].repeat(1, 3, 1, 1)
-            y = inputs[1].float()
+            y = inputs[-1].to(device).detach()
             if len(x) == 1:
                 x = x[0]
             optimiser.zero_grad()
@@ -215,15 +165,15 @@ def train_model(
 
         all_y = torch.cat(all_y)
         all_y_pred = torch.cat(all_y_pred)
-        train_acc = accuracy_score(
-            np.argmax(all_y.numpy(), axis=1), np.argmax(all_y_pred.numpy(), axis=1)
+        train_acc = balanced_accuracy_score(
+            all_y.numpy(), (all_y_pred.numpy() > 0.5).astype(float)
         )
         all_train_acc.append(train_acc)
 
         # Can add more conditions to support loss instead of accuracy. Use *-1 for loss inequality instead of acc
         if x_val is not None:
             val_loss, val_acc = test_model(
-                model, val_loader, criterion, 0.5, device=device
+                model, val_loader, criterion, device=device
             )  # This might not work multi.c.
             all_val_loss.append(val_loss)
             all_val_acc.append(val_acc)
@@ -237,11 +187,11 @@ def train_model(
             checkpoint_name = f"model_{model_name}.pth"
             torch.save(
                 model.state_dict(),
-                os.path.join(model_dir, "pytorch", checkpoint_name),
+                os.path.join(model_dir, checkpoint_name),
             )
             print(
                 "Saving model to:",
-                os.path.join(model_dir, "pytorch", checkpoint_name),
+                os.path.join(model_dir, checkpoint_name),
             )
             best_train_acc = train_acc
             if x_val is not None:
@@ -266,7 +216,7 @@ def train_model(
                 "Epoch: %d, Train Loss: %.8f, Train Acc: %.8f, overrun_counter %i"
                 % (e, train_loss / len(train_loader), train_acc, overrun_counter)
             )
-        if overrun_counter > config_pytorch.max_overrun:
+        if overrun_counter > hyperparameters.max_overrun:
             break
     return model
 
@@ -274,7 +224,7 @@ def train_model(
 def test_model(model, test_loader, criterion, device=None):
     with torch.no_grad():
         if device is None:
-            torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+            torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         test_loss = 0.0
         model.eval()
@@ -305,18 +255,16 @@ def test_model(model, test_loader, criterion, device=None):
         all_y_pred = torch.cat(all_y_pred)
 
         test_loss = test_loss / len(test_loader)
-        test_acc = accuracy_score(
-            np.argmax(all_y.numpy(), axis=1), np.argmax(all_y_pred.numpy(), axis=1)
+        test_acc = balanced_accuracy_score(
+            all_y.numpy(), (all_y_pred.numpy() > 0.5).astype(float)
         )
 
         return test_loss, test_acc
 
 
-def load_model(filepath, model=Resnet(config_pytorch.n_classes)):
+def load_model(filepath, model=Resnet(hyperparameters.n_classes)):
     # Instantiate model to inspect
-    device = torch.device(
-        "cuda:0" if torch.cuda.is_available() else torch.device("cpu")
-    )
+    device = torch.device("cuda" if torch.cuda.is_available() else torch.device("cpu"))
     if torch.cuda.device_count() > 1:
         print("Using data parallel")
         model = nn.DataParallel(
