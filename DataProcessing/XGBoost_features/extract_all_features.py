@@ -1,17 +1,14 @@
 import librosa
 import numpy as np
 
+from DataProcessing.helper_code import compare_strings, get_locations
 from DataProcessing.XGBoost_features.generic_frequency_audio_features import (
     get_generic_frequency_audio_features,
 )
 from DataProcessing.XGBoost_features.generic_time_audio_features import (
     get_generic_time_audio_features,
 )
-from DataProcessing.XGBoost_features.metadata import (
-    compare_strings,
-    get_locations,
-    get_metadata,
-)
+from DataProcessing.XGBoost_features.metadata import get_metadata
 from DataProcessing.XGBoost_features.spectral_bandwidth import get_spectral_bandwidth
 from DataProcessing.XGBoost_features.spectral_centroid import get_spectral_centroid
 from DataProcessing.XGBoost_features.spectral_rolloff import get_spectral_rolloff
