@@ -9,7 +9,7 @@ from sklearn.metrics import balanced_accuracy_score
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
 
-from config import hyperparameters
+from Config import hyperparameters
 from HumBugDB.ResNetDropoutSource import resnet50dropout
 from HumBugDB.ResNetSource import resnet50
 

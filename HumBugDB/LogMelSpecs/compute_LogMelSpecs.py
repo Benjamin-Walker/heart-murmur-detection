@@ -5,7 +5,7 @@ import resampy
 import torch
 
 import HumBugDB.LogMelSpecs.mel_features as mel_features
-from config import hyperparameters
+from Config import hyperparameters
 
 
 def waveform_to_examples(data, sample_rate, return_tensor=True):

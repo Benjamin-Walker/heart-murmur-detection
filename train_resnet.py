@@ -2,7 +2,7 @@ import argparse
 
 import torch
 
-from config import hyperparameters
+from Config import hyperparameters
 from DataProcessing.net_feature_extractor import net_feature_loader
 from HumBugDB.runTorch import ResnetDropoutFull as ResnetDropoutBinary
 from HumBugDB.runTorch import ResnetFull as ResnetBinary

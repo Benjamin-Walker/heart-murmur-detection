@@ -6,7 +6,7 @@ import torch.nn.functional as F  # For dropout
 from torch import Tensor
 from torch.hub import load_state_dict_from_url
 
-from config import hyperparameters
+from Config import hyperparameters
 from HumBugDB.ResNetSource import conv1x1, conv3x3
 
 
