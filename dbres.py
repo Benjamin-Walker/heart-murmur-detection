@@ -47,8 +47,8 @@ def get_binary_spectrogram_outputs(
     present_probability = np.mean(np.array(present_probabilities), axis=0)
     unknown_probability = np.mean(np.array(unknown_probabilities), axis=0)
     outputs = []
-    idx_unknown = (np.mean(np.array(model_outputs_unknown)) > 0.1).astype(float)
-    idx_present = (np.mean(np.array(model_outputs_present)) > 0.1).astype(float)
+    idx_unknown = (np.mean(np.array(model_outputs_unknown)) > 0.5).astype(float)
+    idx_present = (np.mean(np.array(model_outputs_present)) > 0.5).astype(float)
     if idx_present == 0:
         outputs.append(np.array([1, 0, 0]))
     elif idx_unknown == 0:

@@ -118,10 +118,11 @@ def text_xgboost_integration(
         model_binary_unknown_pth,
     )
 
-    murmur_probabilities = murmur_classifier.predict_proba(features_combined)[0]
-    murmur_outputs = np.zeros(3, dtype=np.int_)
-    idx = np.argmax(murmur_probabilities)
-    murmur_outputs[idx] = 1
+    murmur_probabilities = murmur_classifier.predict_proba(features_combined)
+    murmur_outputs = np.zeros(murmur_probabilities.shape, dtype=np.int_)
+    idx = np.argmax(murmur_probabilities, axis=1)
+    for i in range(len(murmur_outputs)):
+        murmur_outputs[i][idx[i]] = 1
 
     return murmur_probabilities, murmur_outputs
 
