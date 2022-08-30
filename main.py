@@ -70,8 +70,6 @@ def main(
     xgb_scores = calculate_xgboost_integration_scores(
         train_data_directory,
         test_data_directory,
-        True,
-        False,
         dbres_output_directory,
         "models/model_BinaryPresent.pth",
         "models/model_BinaryUnknown.pth",

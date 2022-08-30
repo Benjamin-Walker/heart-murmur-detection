@@ -78,7 +78,6 @@ def get_murmurs_features(
 
 def train_xgboost_integration(
     train_data_directory,
-    train_recalc_dbres_output,
     dbres_output_directory,
     model_binary_present_pth,
     model_binary_unknown_pth,
@@ -86,7 +85,7 @@ def train_xgboost_integration(
 
     murmurs, features_combined = get_murmurs_features(
         train_data_directory,
-        train_recalc_dbres_output,
+        True,
         dbres_output_directory,
         model_binary_present_pth,
         model_binary_unknown_pth,
@@ -103,7 +102,6 @@ def train_xgboost_integration(
 def text_xgboost_integration(
     murmur_classifier,
     test_data_directory,
-    test_recalc_dbres_output,
     dbres_output_directory,
     model_binary_present_pth,
     model_binary_unknown_pth,
@@ -111,7 +109,7 @@ def text_xgboost_integration(
 
     _, features_combined = get_murmurs_features(
         test_data_directory,
-        test_recalc_dbres_output,
+        True,
         dbres_output_directory,
         model_binary_present_pth,
         model_binary_unknown_pth,
@@ -129,15 +127,12 @@ def text_xgboost_integration(
 def calculate_xgboost_integration_scores(
     train_data_directory,
     test_data_directory,
-    train_recalc_dbres_output,
-    test_recalc_dbres_output,
     dbres_output_directory,
     model_binary_present_pth,
     model_binary_unknown_pth,
 ):
     murmur_classifier = train_xgboost_integration(
         train_data_directory,
-        train_recalc_dbres_output,
         dbres_output_directory,
         model_binary_present_pth,
         model_binary_unknown_pth,
@@ -145,7 +140,6 @@ def calculate_xgboost_integration_scores(
     murmur_probabilities, murmur_outputs = text_xgboost_integration(
         murmur_classifier,
         test_data_directory,
-        test_recalc_dbres_output,
         dbres_output_directory,
         model_binary_present_pth,
         model_binary_unknown_pth,
@@ -177,28 +171,6 @@ if __name__ == "__main__":
         help="The directory in which DBRes's output is saved.",
         default="data/dbres_outputs",
     )
-    parser.add_argument(
-        "--train_recalc_dbres_output",
-        action="store_true",
-        help="Whether or not to recalculate the output from DBRes for the train set.",
-    )
-    parser.add_argument(
-        "--no-train_recalc_dbres_output",
-        dest="train_recalc_dbres_output",
-        action="store_false",
-    )
-    parser.set_defaults(train_recalc_dbres_output=True)
-    parser.add_argument(
-        "--test_recalc_dbres_output",
-        action="store_true",
-        help="Whether or not to recalculate the output from DBRes for the test set.",
-    )
-    parser.add_argument(
-        "--no-test_recalc_dbres_output",
-        dest="test_recalc_dbres_output",
-        action="store_false",
-    )
-    parser.set_defaults(test_recalc_dbres_output=True)
     parser.add_argument(
         "--model_binary_present_pth",
         type=str,
