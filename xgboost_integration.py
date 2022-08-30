@@ -93,7 +93,6 @@ def train_xgboost_integration(
     )
 
     murmur_classifier = xgb.XGBClassifier()
-    breakpoint()
     murmur_classifier.fit(
         features_combined, murmurs, sample_weight=-2 * np.argmax(murmurs, axis=1) + 5
     )
