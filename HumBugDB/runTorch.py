@@ -18,12 +18,10 @@ class ResnetFull(nn.Module):
     def __init__(self):
         super(ResnetFull, self).__init__()
         self.resnet = resnet50(pretrained=hyperparameters.pretrained)
-        self.n_channels = 3  # For building data correctly with dataloaders. Check if 1 works with pretrained=False
+        self.n_channels = 3
         # Remove final linear layer
         self.resnet = nn.Sequential(*(list(self.resnet.children())[:-1]))
-        self.fc1 = nn.Linear(
-            2048, 1
-        )  # 512 for resnet18, resnet34, 2048 for resnet50. Determine from x.shape() before fc1 layer
+        self.fc1 = nn.Linear(2048, 1)
 
     def forward(self, x):
         x = self.resnet(x).squeeze()
@@ -39,12 +37,10 @@ class ResnetDropoutFull(nn.Module):
         self.resnet = resnet50dropout(
             pretrained=hyperparameters.pretrained, dropout_p=self.dropout
         )
-        self.n_channels = 3  # For building data correctly with dataloaders. Check if 1 works with pretrained=False
+        self.n_channels = 3
         # Remove final linear layer
         self.resnet = nn.Sequential(*(list(self.resnet.children())[:-1]))
-        self.fc1 = nn.Linear(
-            2048, 1
-        )  # 512 for resnet18, resnet34, 2048 for resnet50. Determine from x.shape() before fc1 layer
+        self.fc1 = nn.Linear(2048, 1)
 
     def forward(self, x):
         x = self.resnet(x).squeeze()
@@ -112,7 +108,7 @@ def train_model(
     if not os.path.isdir(model_dir):
         os.makedirs(model_dir)
 
-    if x_val is not None:  # TODO: check dimensions when supplying validation data.
+    if x_val is not None:
         train_loader, val_loader = build_dataloader(
             x_train, y_train, x_val, y_val, sampler=sampler
         )
@@ -129,7 +125,6 @@ def train_model(
         )
 
     model = model.to(device)
-    # Change compatibility to other loss function, cross-test with main.
     criterion = nn.BCELoss()
     optimiser = optim.Adam(model.parameters(), lr=hyperparameters.lr)
 
@@ -214,7 +209,8 @@ def train_model(
         overrun_counter += 1
         if x_val is not None:
             print(
-                "Epoch: %d, Train Loss: %.8f, Train Acc: %.8f, Val Loss: %.8f, Val Acc: %.8f, overrun_counter %i"
+                "Epoch: %d, Train Loss: %.8f, Train Acc: %.8f, Val Loss: %.8f, "
+                "Val Acc: %.8f, overrun_counter %i"
                 % (
                     e,
                     train_loss / len(train_loader),
@@ -283,7 +279,7 @@ def test_model(model, test_loader, clas_weight, criterion, device=None):
 
 
 def load_model(filepath, model=ResnetDropoutFull()):
-    # Instantiate model to inspect
+
     device = torch.device("cuda" if torch.cuda.is_available() else torch.device("cpu"))
 
     if torch.cuda.device_count() > 1:

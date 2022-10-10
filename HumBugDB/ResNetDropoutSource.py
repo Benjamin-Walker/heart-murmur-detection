@@ -2,7 +2,7 @@ from typing import Any, Callable, List, Optional, Type, Union
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F  # For dropout
+import torch.nn.functional as F
 from torch import Tensor
 from torch.hub import load_state_dict_from_url
 
@@ -43,7 +43,6 @@ class BasicBlockDropout(nn.Module):
             raise ValueError("BasicBlock only supports groups=1 and base_width=64")
         if dilation > 1:
             raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
-        # Both self.conv1 and self.downsample layers downsample the input when stride != 1
         self.conv1 = conv3x3(inplanes, planes, stride)
         self.bn1 = norm_layer(planes)
         self.relu = nn.ReLU(inplace=True)
@@ -70,7 +69,6 @@ class BasicBlockDropout(nn.Module):
         out += identity
         out = self.relu(out)
         out = F.dropout(out, p=self.dropout_p)  # Added
-        # print('Basic block forward self, dropout: ', self.dropout_p)
 
         return out
 
@@ -102,7 +100,6 @@ class BottleneckDropout(nn.Module):
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         width = int(planes * (base_width / 64.0)) * groups
-        # Both self.conv2 and self.downsample layers downsample the input when stride != 1
         self.conv1 = conv1x1(inplanes, width)
         self.bn1 = norm_layer(width)
         self.conv2 = conv3x3(width, width, stride, groups, dilation)
@@ -113,8 +110,6 @@ class BottleneckDropout(nn.Module):
         self.downsample = downsample
         self.stride = stride
         self.dropout_p = dropout_p
-        # print('BottleNeck super() value of dropout init, and self: ', dropout_p, self.dropout_p)
-        # print('BottleNeck super() value of dropout init:', dropout_p)
 
     def forward(self, x: Tensor) -> Tensor:
         identity = x
@@ -122,7 +117,6 @@ class BottleneckDropout(nn.Module):
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-        # print('Bottleneck forward value of dropout: ', self.dropout_p)
         out = F.dropout(out, p=self.dropout_p)  # Added
 
         out = self.conv2(out)
@@ -181,7 +175,6 @@ class ResNet(nn.Module):
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        # dropout here (?)
         self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(
             block, 128, layers[1], stride=2, dilate=replace_stride_with_dilation[0]
@@ -208,9 +201,9 @@ class ResNet(nn.Module):
         if zero_init_residual:
             for m in self.modules():
                 if isinstance(m, BottleneckDropout):
-                    nn.init.constant_(m.bn3.weight, 0)  # type: ignore[arg-type]
+                    nn.init.constant_(m.bn3.weight, 0)
                 elif isinstance(m, BasicBlockDropout):
-                    nn.init.constant_(m.bn2.weight, 0)  # type: ignore[arg-type]
+                    nn.init.constant_(m.bn2.weight, 0)
 
     def _make_layer(
         self,
@@ -261,7 +254,6 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def _forward_impl(self, x: Tensor) -> Tensor:
-        # See note [TorchScript super()]
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -275,7 +267,6 @@ class ResNet(nn.Module):
 
         x = self.avgpool(x)
         x = F.dropout_p(x, p=self.dropout_p)  # Added
-        # print('forward_imp dropout', self.dropout_p)
         x = torch.flatten(x, 1)
         x = self.fc(x)
 
@@ -303,8 +294,8 @@ def _resnet(
 def resnet50dropout(
     pretrained: bool = False, progress: bool = True, **kwargs: Any
 ) -> ResNet:
-    r"""ResNet-50 model from
-    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
+    """ResNet-50 model from
+    "Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>.
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet

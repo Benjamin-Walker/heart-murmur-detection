@@ -50,7 +50,9 @@ def get_pregnancy_status(data):
 
 # Extract features from the data.
 def get_metadata(data):
-    # Extract the age group and replace with the (approximate) number of months for the middle of the age group.
+
+    # Extract the age group and replace with the (approximate) number of months
+    # for the middle of the age group.
     age_group = get_age(data)
 
     if compare_strings(age_group, "Neonate"):

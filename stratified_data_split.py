@@ -23,27 +23,6 @@ def stratified_test_vali_split(
     vali_size: float,
     random_state: int,
 ):
-    """Split the data in data_directory into train and test, stratifying over
-    the specified columns.
-
-        Parameters
-        ----------
-        stratified_features : list
-            A list of the features over which to stratify the split.
-        data_directory : str
-            Folder containing the data to split.
-        out_directory : str
-            Folder to save the split data into.
-        test_size : float
-            Fraction of the data to place into the test set.
-        random_state : int
-            Random state used for the data split.
-
-        Returns
-        -------
-        None
-    """
-
     # Check if out_directory directory exists, otherwise create it.
     if not os.path.exists(out_directory):
         os.makedirs(out_directory)
@@ -155,22 +134,6 @@ def stratified_test_vali_split(
 
 
 def copy_files(data_directory: str, ident: str, out_directory: str) -> None:
-    """Copy file in data_directory beginning with ident to out_directory
-
-    Parameters
-    ----------
-    data_directory : str
-        Folder containing the data to split.
-    ident : str
-        Identifier for the file to be copied.
-    out_directory : str
-        Folder to save the copied file into.
-
-    Returns
-    -------
-    None
-    """
-
     # Get the list of files in the data folder.
     files = os.listdir(data_directory)
     # Copy all files in data_directory that start with f to out_directory

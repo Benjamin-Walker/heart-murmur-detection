@@ -14,7 +14,6 @@ from HumBugDB.ResNetDropoutSource import resnet50dropout
 from HumBugDB.ResNetSource import resnet50
 
 
-# Resnet with full dropout
 class ResnetFull(nn.Module):
     def __init__(self, n_classes):
         super(ResnetFull, self).__init__()
@@ -22,9 +21,7 @@ class ResnetFull(nn.Module):
         self.n_channels = 3
         # Remove final linear layer
         self.resnet = nn.Sequential(*(list(self.resnet.children())[:-1]))
-        self.fc1 = nn.Linear(
-            2048, n_classes
-        )  # 512 for resnet18, resnet34, 2048 for resnet50. Determine from x.shape() before fc1 layer
+        self.fc1 = nn.Linear(2048, n_classes)
 
     def forward(self, x):
         x = self.resnet(x).squeeze()
@@ -43,36 +40,11 @@ class ResnetDropoutFull(nn.Module):
         self.n_channels = 3
         # Remove final linear layer
         self.resnet = nn.Sequential(*(list(self.resnet.children())[:-1]))
-        self.fc1 = nn.Linear(
-            2048, n_classes
-        )  # 512 for resnet18, resnet34, 2048 for resnet50. Determine from x.shape() before fc1 layer
+        self.fc1 = nn.Linear(2048, n_classes)
 
     def forward(self, x):
         x = self.resnet(x).squeeze()
         x = self.fc1(F.dropout(x, p=self.dropout))
-        return x
-
-
-# Resnet with dropout on last layer only
-class Resnet(nn.Module):
-    def __init__(self, n_classes, dropout=0.2):
-        super(Resnet, self).__init__()
-        self.resnet = resnet50(pretrained=hyperparameters.pretrained)
-        self.dropout = dropout
-        self.n_channels = 3
-        # Remove final linear layer
-        self.resnet = nn.Sequential(*(list(self.resnet.children())[:-1]))
-        self.fc1 = nn.Linear(
-            2048, n_classes
-        )  # 512 for resnet18, resnet34, 2048 for resnet50. Determine from x.shape() before fc1 layer
-
-    #         self.apply(_weights_init)
-    def forward(self, x):
-        x = self.resnet(x).squeeze()
-        #         x = self.fc1(x)
-        # print(x.shape)
-        x = self.fc1(F.dropout(x, p=self.dropout))
-        # x = torch.sigmoid(x)  # Warning on this: XENT loss doesn't need sigmoid whereas BCELoss does
         return x
 
 
@@ -100,21 +72,20 @@ def train_model(
     clas_weight=None,
     x_val=None,
     y_val=None,
-    model=Resnet(hyperparameters.n_classes),
+    model=ResnetDropoutFull(hyperparameters.n_classes),
     model_name="test",
     model_dir="models",
 ):
     if not os.path.isdir(model_dir):
         os.makedirs(model_dir)
 
-    if x_val is not None:  # TODO: check dimensions when supplying validation data.
+    if x_val is not None:
         train_loader, val_loader = build_dataloader(x_train, y_train, x_val, y_val)
 
     else:
-        train_loader = build_dataloader(x_train, y_train, n_channels=model.n_channels)
+        train_loader = build_dataloader(x_train, y_train)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # print(f'Training on {device}')
 
     if torch.cuda.device_count() > 1:
         print("Using data parallel")
@@ -170,11 +141,8 @@ def train_model(
         )
         all_train_acc.append(train_acc)
 
-        # Can add more conditions to support loss instead of accuracy. Use *-1 for loss inequality instead of acc
         if x_val is not None:
-            val_loss, val_acc = test_model(
-                model, val_loader, criterion, device=device
-            )  # This might not work multi.c.
+            val_loss, val_acc = test_model(model, val_loader, criterion, device=device)
             all_val_loss.append(val_loss)
             all_val_acc.append(val_acc)
 
@@ -201,7 +169,8 @@ def train_model(
         overrun_counter += 1
         if x_val is not None:
             print(
-                "Epoch: %d, Train Loss: %.8f, Train Acc: %.8f, Val Loss: %.8f, Val Acc: %.8f, overrun_counter %i"
+                "Epoch: %d, Train Loss: %.8f, Train Acc: %.8f, Val Loss: %.8f, "
+                "Val Acc: %.8f, overrun_counter %i"
                 % (
                     e,
                     train_loss / len(train_loader),
@@ -260,23 +229,3 @@ def test_model(model, test_loader, criterion, device=None):
         )
 
         return test_loss, test_acc
-
-
-def load_model(filepath, model=Resnet(hyperparameters.n_classes)):
-    # Instantiate model to inspect
-    device = torch.device("cuda" if torch.cuda.is_available() else torch.device("cpu"))
-    if torch.cuda.device_count() > 1:
-        print("Using data parallel")
-        model = nn.DataParallel(
-            model, device_ids=list(range(torch.cuda.device_count()))
-        )
-    model = model.to(device)
-    # Load trained parameters from checkpoint (may need to download from S3 first)
-
-    if torch.cuda.is_available():
-        map_location = lambda storage, loc: storage.cuda()
-    else:
-        map_location = torch.device("cpu")
-    model.load_state_dict(torch.load(filepath, map_location=map_location))
-
-    return model
