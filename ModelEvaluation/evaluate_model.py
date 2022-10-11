@@ -1,7 +1,12 @@
 #!/usr/bin/env python
-
+#
+# BSD 2-Clause License
+#
+# Copyright (c) 2022 PhysioNet/Computing in Cardiology Challenges
+# All rights reserved.
+#
 # Do *not* edit this script. Changes will be discarded so that we can process the models consistently.
-
+#
 # This file contains functions for evaluating models for the 2022 Challenge. You can run it as follows:
 #
 #   python evaluate_model.py labels outputs scores.csv
