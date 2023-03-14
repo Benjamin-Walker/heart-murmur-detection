@@ -93,6 +93,7 @@ recordings: The George B. Moody Physionet Challenge 2022".
     title={Dual Bayesian ResNet: A Deep Learning Approach to Heart Murmur Detection},
     author={Benjamin Walker and Felix Krones and Ivan Kiskin and Guy Parsons and Terry Lyons and Adam Mahdi},
     journal={Computing in Cardiology},
+    volume={49},
     year={2022}
 }
 ```
