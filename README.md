@@ -11,15 +11,6 @@ When using this code, please cite [our paper](https://cinc.org/archives/2022/pdf
 > "Dual Bayesian ResNet: A Deep Learning Approach to Heart Murmur Detection", 
 > Computing in Cardiology, 2022.
 
-```bibtex
-@article{walker2022DBResNet,
-    title={Dual Bayesian ResNet: A Deep Learning Approach to Heart Murmur Detection},
-    author={Benjamin Walker and Felix Krones and Ivan Kiskin and Guy Parsons and Terry Lyons and Adam Mahdi},
-    journal={Computing in Cardiology},
-    year={2022}
-}
-```
-
 This repository contains our solution to the first task from the PhysioNet 
 Challenge 2022: Design an algorithm to classify the present, absent, or unknown cases 
 of heart murmurs from heart sound recordings [1,2].
@@ -93,3 +84,15 @@ Computing in Cardiology, 2022.
 [2] Reyna MA, Kiarashi Y, Elola A, Oliveira J, Renna F, Gu
 A, et al. "Heart murmur detection from phonocardiogram
 recordings: The George B. Moody Physionet Challenge 2022".
+
+
+## Bibtex Citation
+
+```bibtex
+@article{walker2022DBResNet,
+    title={Dual Bayesian ResNet: A Deep Learning Approach to Heart Murmur Detection},
+    author={Benjamin Walker and Felix Krones and Ivan Kiskin and Guy Parsons and Terry Lyons and Adam Mahdi},
+    journal={Computing in Cardiology},
+    year={2022}
+}
+```
