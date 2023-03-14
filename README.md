@@ -5,7 +5,7 @@
 
 ### Our entry to the George B. Moody PhysioNet Challenge 2022: Heart Murmur Detection from Phonocardiogram Recordings
 
-When using this code, please cite [our paper](https://cinc.org/2022/Program/accepted/355_Preprint.pdf): 
+When using this code, please cite [our paper](https://cinc.org/archives/2022/pdf/CinC2022-355.pdf): 
 
 > Benjamin Walker, Felix Krones, Ivan Kiskin, Guy Parsons, Terry Lyons, and Adam Mahdi.
 > "Dual Bayesian ResNet: A Deep Learning Approach to Heart Murmur Detection", 
