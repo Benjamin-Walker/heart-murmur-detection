@@ -70,9 +70,7 @@ def calc_patient_output(model, recording_spectrograms, repeats):
     outputs = []
     for location in recording_spectrograms:
         input = location.repeat(1, 3, 1, 1)
-        device = (
-            torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-        )
+        device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
         input = input.to(device)
         model_out = []
         for _ in range(repeats):
@@ -169,6 +167,8 @@ def calculate_dbres_scores(
 
 
 if __name__ == "__main__":
+
+    print("---------------- Starting dbres.py for predictions and evaluations ----------------")
 
     parser = argparse.ArgumentParser(prog="DBRes")
     parser.add_argument(

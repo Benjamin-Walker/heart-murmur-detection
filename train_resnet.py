@@ -45,7 +45,9 @@ def run_model_training(
     weights,
 ):
 
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
+    print("Using device:", device)
+
     (
         spectrograms_train,
         murmurs_train,
@@ -59,7 +61,8 @@ def run_model_training(
         vali_data_directory,
         spectrogram_directory,
     )
-
+    print("Data loaded")
+    
     X_train = spectrograms_train.to(device)
     X_test = spectrograms_test.to(device)
     if classes_name == "murmur":
@@ -154,6 +157,8 @@ def run_model_training(
 
 
 if __name__ == "__main__":
+
+    print("---------------- Starting train_resnet.py for training ----------------")
 
     parser = argparse.ArgumentParser(prog="TrainResNet")
     parser.add_argument(

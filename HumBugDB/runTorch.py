@@ -116,7 +116,7 @@ def train_model(
     else:
         train_loader = build_dataloader(x_train, y_train, sampler=sampler)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
     if torch.cuda.device_count() > 1:
         print("Using data parallel")
@@ -233,7 +233,7 @@ def train_model(
 def test_model(model, test_loader, clas_weight, criterion, device=None):
     with torch.no_grad():
         if device is None:
-            torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
         test_loss = 0.0
         model.eval()
@@ -280,7 +280,7 @@ def test_model(model, test_loader, clas_weight, criterion, device=None):
 
 def load_model(filepath, model=ResnetDropoutFull()):
 
-    device = torch.device("cuda" if torch.cuda.is_available() else torch.device("cpu"))
+    device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
     if torch.cuda.device_count() > 1:
         print("Using data parallel")
@@ -291,6 +291,8 @@ def load_model(filepath, model=ResnetDropoutFull()):
 
     if torch.cuda.is_available():
         map_location = lambda storage, loc: storage.cuda()
+    elif torch.backends.mps.is_available():
+        map_location = lambda storage, loc: storage.mps()
     else:
         map_location = torch.device("cpu")
     model.load_state_dict(torch.load(filepath, map_location=map_location))

@@ -85,7 +85,7 @@ def train_model(
     else:
         train_loader = build_dataloader(x_train, y_train)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
     if torch.cuda.device_count() > 1:
         print("Using data parallel")
@@ -193,7 +193,7 @@ def train_model(
 def test_model(model, test_loader, criterion, device=None):
     with torch.no_grad():
         if device is None:
-            torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
         test_loss = 0.0
         model.eval()

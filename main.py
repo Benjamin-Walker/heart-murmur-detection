@@ -8,7 +8,7 @@ from xgboost_integration import calculate_xgboost_integration_scores
 
 
 def main(
-    full_data_directory,
+    data_directory,
     stratified_directory,
     test_size,
     vali_size,
@@ -28,7 +28,7 @@ def main(
 
     stratified_test_vali_split(
         stratified_features,
-        full_data_directory,
+        data_directory,
         stratified_directory,
         test_size,
         vali_size,
@@ -82,7 +82,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(prog="DBResAndXGBoostIntegration")
     parser.add_argument(
-        "--full_data_directory",
+        "--data_directory",
         type=str,
         help="The directory containing all of the data.",
         default="physionet.org/files/circor-heart-sound/1.0.3/training_data",

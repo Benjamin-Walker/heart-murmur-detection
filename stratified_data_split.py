@@ -18,17 +18,17 @@ from DataProcessing.XGBoost_features.metadata import get_metadata
 def stratified_test_vali_split(
     stratified_features: list,
     data_directory: str,
-    out_directory: str,
+    stratified_directory: str,
     test_size: float,
     vali_size: float,
     random_state: int,
 ):
-    # Check if out_directory directory exists, otherwise create it.
-    if not os.path.exists(out_directory):
-        os.makedirs(out_directory)
+    # Check if stratified_directory directory exists, otherwise create it.
+    if not os.path.exists(stratified_directory):
+        os.makedirs(stratified_directory)
     else:
-        shutil.rmtree(out_directory)
-        os.makedirs(out_directory)
+        shutil.rmtree(stratified_directory)
+        os.makedirs(stratified_directory)
     # Get metadata
     patient_files = find_patient_files(data_directory)
     num_patient_files = len(patient_files)
@@ -105,44 +105,46 @@ def stratified_test_vali_split(
         random_state=random_state + 1,
         stratify=complete_pd_train["stratify_column"],
     )
-    with open(os.path.join(out_directory, "split_details.txt"), "w") as text_file:
+    with open(os.path.join(stratified_directory, "split_details.txt"), "w") as text_file:
         text_file.write("This data split is stratified over the following features: \n")
         for feature in stratified_features:
             text_file.write(feature + ", ")
     # Save the files.
-    os.makedirs(os.path.join(out_directory, "train_data"))
-    os.makedirs(os.path.join(out_directory, "vali_data"))
-    os.makedirs(os.path.join(out_directory, "test_data"))
+    os.makedirs(os.path.join(stratified_directory, "train_data"))
+    os.makedirs(os.path.join(stratified_directory, "vali_data"))
+    os.makedirs(os.path.join(stratified_directory, "test_data"))
     for f in complete_pd_train["id"]:
         copy_files(
             data_directory,
             f,
-            os.path.join(out_directory, "train_data/"),
+            os.path.join(stratified_directory, "train_data/"),
         )
     for f in complete_pd_val["id"]:
         copy_files(
             data_directory,
             f,
-            os.path.join(out_directory, "vali_data/"),
+            os.path.join(stratified_directory, "vali_data/"),
         )
     for f in complete_pd_test["id"]:
         copy_files(
             data_directory,
             f,
-            os.path.join(out_directory, "test_data/"),
+            os.path.join(stratified_directory, "test_data/"),
         )
 
 
-def copy_files(data_directory: str, ident: str, out_directory: str) -> None:
+def copy_files(data_directory: str, ident: str, stratified_directory: str) -> None:
     # Get the list of files in the data folder.
     files = os.listdir(data_directory)
-    # Copy all files in data_directory that start with f to out_directory
+    # Copy all files in data_directory that start with f to stratified_directory
     for f in files:
         if f.startswith(ident):
-            _ = shutil.copy(os.path.join(data_directory, f), out_directory)
+            _ = shutil.copy(os.path.join(data_directory, f), stratified_directory)
 
 
 if __name__ == "__main__":
+
+    print("---------------- Starting stratified_data_split.py to split the data ----------------")
 
     parser = argparse.ArgumentParser(prog="StratifiedDataSplit")
     parser.add_argument(
@@ -152,7 +154,7 @@ if __name__ == "__main__":
         default="physionet.org/files/circor-heart-sound/1.0.3/training_data",
     )
     parser.add_argument(
-        "--out_directory",
+        "--stratified_directory",
         type=str,
         help="The directory to store the split data.",
         default="data/stratified_data",

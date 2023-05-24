@@ -38,11 +38,19 @@ wget -r -N -c -np https://physionet.org/files/circor-heart-sound/1.0.3/
 - [XGBoost](https://github.com/dmlc/xgboost) for xgboost;
 - [Librosa](https://github.com/librosa/librosa) for audio processing and feature extraction;
 
+### Install using conda on cuda device
+
 ```
 conda create -n myenv python=3.9
 conda activate myenv
 conda install pytorch==1.11.0 torchvision==0.12.0 cudatoolkit=11.3 -c pytorch
 pip install tqdm==4.64.1 scipy==1.9.2 resampy==0.4.2 scikit-learn==1.1.2 pandas==1.5.0 xgboost==1.6.2 librosa==0.9.2
+```
+
+### Install using pipenv (mps enabled)
+
+```
+pipenv install
 ```
 
 ## Running Experiments
