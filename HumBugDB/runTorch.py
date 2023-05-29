@@ -135,7 +135,8 @@ def train_model(
     best_val_acc = -np.inf
 
     best_train_acc = -np.inf
-
+    e_saved = None
+    output_string_to_save = ""
     overrun_counter = 0
     for e in range(hyperparameters.epochs):
         train_loss = 0.0
@@ -192,7 +193,7 @@ def train_model(
         if acc_metric > best_acc_metric:
 
             checkpoint_name = f"model_{model_name}.pth"
-
+            e_saved = e
             torch.save(
                 model.state_dict(),
                 os.path.join(model_dir, checkpoint_name),
@@ -208,7 +209,7 @@ def train_model(
 
         overrun_counter += 1
         if x_val is not None:
-            print(
+            output_string = (
                 "Epoch: %d, Train Loss: %.8f, Train Acc: %.8f, Val Loss: %.8f, "
                 "Val Acc: %.8f, overrun_counter %i"
                 % (
@@ -221,12 +222,31 @@ def train_model(
                 )
             )
         else:
-            print(
+            output_string = (
                 "Epoch: %d, Train Loss: %.8f, Train Acc: %.8f, overrun_counter %i"
                 % (e, train_loss / len(train_loader), train_metric, overrun_counter)
             )
+        print(output_string)
+        output_string_to_save += output_string + "\n"
         if overrun_counter > hyperparameters.max_overrun:
             break
+    
+    if e_saved is not None:
+        checkpoint_name = f"model_{model_name}_final.pth"
+        torch.save(
+            model.state_dict(),
+            os.path.join(model_dir, checkpoint_name),
+        )
+        print(
+            "Saving model to:",
+            os.path.join(model_dir, checkpoint_name),
+        )
+
+    # Save output string
+    output_string_to_save += f"Best epoch: {e_saved}\n"
+    with open(os.path.join(model_dir, f"output_{model_name}.txt"), "w") as f:
+        f.write(output_string_to_save)
+
     return model
 
 

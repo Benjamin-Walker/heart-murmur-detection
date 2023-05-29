@@ -2,6 +2,7 @@ import argparse
 import os
 
 import numpy as np
+import pandas as pd
 import torch
 from tqdm import tqdm
 
@@ -9,11 +10,13 @@ from DataProcessing.find_and_load_patient_files import (
     find_patient_files,
     load_patient_data,
 )
-from DataProcessing.helper_code import get_num_locations, load_recordings
+from DataProcessing.helper_code import get_num_locations, load_recordings, load_wav_file
 from HumBugDB.LogMelSpecs.compute_LogMelSpecs import waveform_to_examples
 from HumBugDB.runTorch import load_model
 from ModelEvaluation.evaluate_model import evaluate_model
 from train_resnet import create_model
+
+from Config import hyperparameters
 
 
 def get_binary_spectrogram_outputs(
@@ -89,6 +92,7 @@ def calculate_dbres_output(
     output_directory,
     model_binary_present_pth,
     model_binary_unknown_pth,
+    recordings_file: str = "",
 ):
 
     if recalc_output:
@@ -96,6 +100,7 @@ def calculate_dbres_output(
         if not os.path.exists(output_directory):
             os.makedirs(output_directory)
 
+        # Get model
         model_binary_present = create_model("resnet50dropout", 2)
         model_binary_unknown = create_model("resnet50dropout", 2)
         model_binary_present = load_model(
@@ -104,31 +109,51 @@ def calculate_dbres_output(
         model_binary_unknown = load_model(
             model_binary_unknown_pth, model=model_binary_unknown[0]
         )
-        patient_files = find_patient_files(data_directory)
-        num_patient_files = len(patient_files)
 
-        if num_patient_files == 0:
-            raise Exception("No data was provided.")
-
+        # Get data
         murmur_probabilities = list()
         murmur_outputs = list()
+        if len(recordings_file) > 0:
+            patient_files = pd.read_csv(recordings_file)
+        else:
+            patient_files = find_patient_files(data_directory)
+
+        # Get count of patient files
+        num_patient_files = len(patient_files)
+        if num_patient_files == 0:
+            raise Exception("No data was provided.")
+        
+        # Get spectrograms and predictions
         for i in tqdm(range(num_patient_files)):
-            current_patient_data = load_patient_data(patient_files[i])
-            current_recordings = load_recordings(data_directory, current_patient_data)
+            if len(recordings_file) > 0:
+                current_patient_data = patient_files.iloc[i]
+                num_locations = 1
+                current_recordings = list()
+                for i in range(num_locations):
+                    recording, frequency = load_wav_file(patient_files["path"].iloc[i])
+                    current_recordings.append(recording)
+            else:
+                current_patient_data = load_patient_data(patient_files[i])
+                current_recordings = load_recordings(data_directory, current_patient_data)
+                num_locations = get_num_locations(current_patient_data)
+
+            # Get spectrograms
             current_recordings = [r / 32768 for r in current_recordings]
-            num_locations = get_num_locations(current_patient_data)
             spectrograms = list()
             for j in range(num_locations):
                 mel_spec = waveform_to_examples(
-                    data=current_recordings[j], sample_rate=4000
+                    data=current_recordings[j], sample_rate=hyperparameters.SAMPLE_RATE
                 )
                 spectrograms.append(mel_spec)
+
+            # Get predictions
             murmur_output, murmur_probability = get_binary_spectrogram_outputs(
                 spectrograms, model_binary_present, model_binary_unknown
             )
             murmur_probabilities.append(murmur_probability)
             murmur_outputs.append(murmur_output)
 
+        # Store
         murmur_probabilities = np.vstack(murmur_probabilities)
         np.save(
             os.path.join(output_directory, "murmur_probabilities.npy"),
@@ -151,6 +176,7 @@ def calculate_dbres_scores(
     output_directory,
     model_binary_present_pth,
     model_binary_unknown_pth,
+    recordings_file: str = "",
 ):
 
     murmur_probabilities, murmur_outputs = calculate_dbres_output(
@@ -159,16 +185,19 @@ def calculate_dbres_scores(
         output_directory,
         model_binary_present_pth,
         model_binary_unknown_pth,
+        recordings_file
     )
-    scores = evaluate_model(data_directory, murmur_probabilities, murmur_outputs)
+    scores = evaluate_model(data_directory, murmur_probabilities, murmur_outputs, recordings_file)
+
+    print("--- DBRes scores ---")
     print(f"{scores}")
+    with open(os.path.join(output_directory, "DBRes_score.npy"), "w") as text_file:
+        text_file.write(scores)
 
     return scores
 
 
 if __name__ == "__main__":
-
-    print("---------------- Starting dbres.py for predictions and evaluations ----------------")
 
     parser = argparse.ArgumentParser(prog="DBRes")
     parser.add_argument(
@@ -196,15 +225,27 @@ if __name__ == "__main__":
         "--model_binary_present_pth",
         type=str,
         help="The path of binary ResNet trained to classify present vs not present.",
-        default="models/model_BinaryPresent.pth",
+        default="data/models/model_BinaryPresent.pth",
     )
     parser.add_argument(
         "--model_binary_unknown_pth",
         type=str,
         help="The path of binary ResNet trained to classify unknown vs not unknown.",
-        default="models/model_BinaryUnknown.pth",
+        default="data/models/model_BinaryUnknown.pth",
+    )
+    parser.add_argument(
+        "--recordings_file",
+        type=str,
+        help="The path to a recordings file.",
+        default="",
     )
 
     args = parser.parse_args()
+
+    print("---------------- Starting dbres.py for predictions and evaluations ----------------")
+    if len(args.recordings_file) > 0:
+        print(f"---------------- Using data from {args.recordings_file}")
+    else:
+        print(f"---------------- Using data from {args.data_directory}")
 
     scores = calculate_dbres_scores(**vars(args))

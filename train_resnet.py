@@ -158,8 +158,6 @@ def run_model_training(
 
 if __name__ == "__main__":
 
-    print("---------------- Starting train_resnet.py for training ----------------")
-
     parser = argparse.ArgumentParser(prog="TrainResNet")
     parser.add_argument(
         "--recalc_features",
@@ -206,7 +204,7 @@ if __name__ == "__main__":
         "--model_dir",
         type=str,
         help="The directory to use when saving the model.",
-        default="models",
+        default="data/models",
     )
     parser.add_argument(
         "--classes_name",
@@ -230,5 +228,8 @@ if __name__ == "__main__":
     if args.weights_str:
         weights = [int(x) for x in args.weights_str.split(",")]
     vars(args).popitem()
+
+    print("---------------- Starting train_resnet.py for training ----------------")
+    print(f"---------------- Using data from {args.train_data_directory}")
 
     run_model_training(**vars(args), weights=weights)

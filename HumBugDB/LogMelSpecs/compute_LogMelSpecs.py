@@ -54,9 +54,12 @@ def waveform_to_examples(data, sample_rate, return_tensor=True):
     example_hop_length = int(
         round(hyperparameters.EXAMPLE_HOP_SECONDS * features_sample_rate)
     )
-    log_mel_examples = mel_features.frame(
-        log_mel, window_length=example_window_length, hop_length=example_hop_length
-    )
+    try:
+        log_mel_examples = mel_features.frame(
+            log_mel, window_length=example_window_length, hop_length=example_hop_length
+        )
+    except:
+        raise ValueError(f"Len of log_mel is {len(log_mel)} and len of data is {len(data)}, but EXAMPLE_WINDOW_SECONDS is {hyperparameters.EXAMPLE_WINDOW_SECONDS} such that example_window_length is {example_window_length} and EXAMPLE_HOP_SECONDS is {hyperparameters.EXAMPLE_HOP_SECONDS} such that example_hop_length is {example_hop_length}. Adjust, it cannot be larger than the length of the data.")
 
     if return_tensor:
         log_mel_examples = torch.tensor(log_mel_examples, requires_grad=True)[

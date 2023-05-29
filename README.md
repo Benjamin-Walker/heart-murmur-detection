@@ -22,6 +22,16 @@ versus unknown or absent, and unknown versus present or absent.
 * The output from DBRes integrated with demographic data and signal features 
 using XGBoost.
 
+### Challenge performance for murmur task on held-out subset
+
+Using this code, we reached the following performance:
+
+| Model                 | Accuracy      | Murmur  |
+| -------------         | ------------- | ------------- |
+| DBRes                 | 0.762         | 0.780 |
+| DBRes with XGBoost    | 0.820         | 0.749 |
+
+
 ## Data
 
 The challenge dataset can be downloaded via this 

@@ -1,8 +1,0 @@
-python stratified_data_split.py --data_directory /Users/felixkrones/python_projects/data/physionet_challenge_2022/physionet.org/files/circor-heart-sound/1.0.3/training_data --vali_size 0.2 --test_size 0.2 --random_state 14
-
-python train_resnet.py --recalc_features --model_name resnet50dropout --model_label BinaryPresent --classes_name binary_present
-python train_resnet.py --recalc_features --model_name resnet50dropout --model_label BinaryUnknown --classes_name binary_unknown
-
-python dbres.py --recalc_output
-
-python main.py --data_directory /Users/felixkrones/python_projects/data/physionet_challenge_2022/physionet.org/files/circor-heart-sound/1.0.3/training_data --vali_size 0.2 --test_size 0.2 --random_state 14 --recalc_features --model_name resnet50dropout --recalc_output

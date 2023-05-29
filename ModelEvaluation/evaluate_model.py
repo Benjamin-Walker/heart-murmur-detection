@@ -24,6 +24,7 @@ import os
 import os.path
 
 import numpy as np
+import pandas as pd
 
 from DataProcessing.find_and_load_patient_files import load_patient_data
 from DataProcessing.helper_code import compare_strings
@@ -31,13 +32,31 @@ from DataProcessing.label_extraction import get_murmur
 
 
 # Evaluate the models.
-def evaluate_model(label_folder, output_probabilities, output_labels):
+def evaluate_model(label_folder, output_probabilities, output_labels, recordings_file: str=""):
+
     # Define murmur and outcome classes.
     murmur_classes = ["Present", "Unknown", "Absent"]
 
-    # Load and parse label and model output files.
-    label_files = find_challenge_files(label_folder)
-    murmur_labels = load_murmurs(label_files, murmur_classes)
+    if len(recordings_file) > 0:
+        df_recordings = pd.read_csv(recordings_file)
+        num_patients = len(df_recordings)
+        num_classes = len(murmur_classes)
+        murmur_labels = np.zeros((num_patients, num_classes), dtype=np.bool_)
+        for i in range(num_patients):
+            label = df_recordings["label"].iloc[i]
+            if label == "murmur":
+                label = "Present"
+            elif label == "normal":
+                label = "Absent"
+            else:
+                label = "Unknown"
+            for j, x in enumerate(murmur_classes):
+                if compare_strings(label, x):
+                    murmur_labels[i, j] = 1
+    else:
+        # Load and parse label and model output files.
+        label_files = find_challenge_files(label_folder)
+        murmur_labels = load_murmurs(label_files, murmur_classes)
 
     # For each patient, set the 'Present' or 'Abnormal' class to positive if no
     # class is positive or if multiple classes are positive.

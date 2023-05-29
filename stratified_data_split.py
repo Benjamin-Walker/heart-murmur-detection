@@ -4,7 +4,7 @@ import shutil
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold
 from tqdm import tqdm
 
 from DataProcessing.find_and_load_patient_files import (
@@ -21,7 +21,9 @@ def stratified_test_vali_split(
     stratified_directory: str,
     test_size: float,
     vali_size: float,
-    random_state: int,
+    random_states: list = [0, 11, 42, 101, 1001],
+    cv: bool = False,
+    n_splits: int = 5,
 ):
     # Check if stratified_directory directory exists, otherwise create it.
     if not os.path.exists(stratified_directory):
@@ -88,49 +90,83 @@ def stratified_test_vali_split(
     outcomes_pd = pd.DataFrame(outcomes, columns=outcome_classes)
     complete_pd = pd.concat([features_pd, murmurs_pd, outcomes_pd], axis=1)
     complete_pd["id"] = complete_pd["id"].astype(int).astype(str)
-    # Split data
     complete_pd["stratify_column"] = (
         complete_pd[stratified_features].astype(str).agg("-".join, axis=1)
     )
-    complete_pd_train, complete_pd_test = train_test_split(
-        complete_pd,
-        test_size=test_size,
-        random_state=random_state,
-        stratify=complete_pd["stratify_column"],
-    )
-    vali_split = vali_size / (1 - test_size)
-    complete_pd_train, complete_pd_val = train_test_split(
-        complete_pd_train,
-        test_size=vali_split,
-        random_state=random_state + 1,
-        stratify=complete_pd_train["stratify_column"],
-    )
-    with open(os.path.join(stratified_directory, "split_details.txt"), "w") as text_file:
-        text_file.write("This data split is stratified over the following features: \n")
-        for feature in stratified_features:
-            text_file.write(feature + ", ")
+
+    # Split data
+    complete_pd_train_list = list()
+    complete_pd_val_list = list()
+    complete_pd_test_list = list()
+    cnums = list()
+    if cv:
+        skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+        for i, (train_index, test_index) in enumerate(
+            skf.split(complete_pd, complete_pd["stratify_column"])
+        ):
+            cnums.append(f"split_{i}")
+            complete_pd_train, complete_pd_test = complete_pd.iloc[train_index], complete_pd.iloc[test_index]
+            vali_split = vali_size / (1 - test_size)
+            complete_pd_train, complete_pd_val = train_test_split(
+                complete_pd_train,
+                test_size=vali_split,
+                random_state=42,
+                stratify=complete_pd_train["stratify_column"],
+            )
+            complete_pd_train_list.append(complete_pd_train)
+            complete_pd_val_list.append(complete_pd_val)
+            complete_pd_test_list.append(complete_pd_test)
+    else:
+        for random_state in random_states:
+            cnums.append(f"seed_{random_state}")
+            complete_pd_train, complete_pd_test = train_test_split(
+                complete_pd,
+                test_size=test_size,
+                random_state=random_state,
+                stratify=complete_pd["stratify_column"],
+            )
+            vali_split = vali_size / (1 - test_size)
+            complete_pd_train, complete_pd_val = train_test_split(
+                complete_pd_train,
+                test_size=vali_split,
+                random_state=random_state + 1,
+                stratify=complete_pd_train["stratify_column"],
+            )
+            complete_pd_train_list.append(complete_pd_train)
+            complete_pd_val_list.append(complete_pd_val)
+            complete_pd_test_list.append(complete_pd_test)
+
     # Save the files.
-    os.makedirs(os.path.join(stratified_directory, "train_data"))
-    os.makedirs(os.path.join(stratified_directory, "vali_data"))
-    os.makedirs(os.path.join(stratified_directory, "test_data"))
-    for f in complete_pd_train["id"]:
-        copy_files(
-            data_directory,
-            f,
-            os.path.join(stratified_directory, "train_data/"),
-        )
-    for f in complete_pd_val["id"]:
-        copy_files(
-            data_directory,
-            f,
-            os.path.join(stratified_directory, "vali_data/"),
-        )
-    for f in complete_pd_test["id"]:
-        copy_files(
-            data_directory,
-            f,
-            os.path.join(stratified_directory, "test_data/"),
-        )
+    for cnum, complete_pd_train, complete_pd_val, complete_pd_test in zip(
+        cnums, complete_pd_train_list, complete_pd_val_list, complete_pd_test_list
+    ):
+        print(f"Saving split {cnum} with cv {cv} from {len(cnums)} splits...")
+        save_folder = os.path.join(stratified_directory, f"cv_{cv}", cnum)
+        os.makedirs(os.path.join(save_folder, "train_data"))
+        os.makedirs(os.path.join(save_folder, "vali_data"))
+        os.makedirs(os.path.join(save_folder, "test_data"))
+        with open(os.path.join(save_folder, "split_details.txt"), "w") as text_file:
+            text_file.write("This data split is stratified over the following features: \n")
+            for feature in stratified_features:
+                text_file.write(feature + ", ")
+        for f in complete_pd_train["id"]:
+            copy_files(
+                data_directory,
+                f,
+                os.path.join(save_folder, "train_data/"),
+            )
+        for f in complete_pd_val["id"]:
+            copy_files(
+                data_directory,
+                f,
+                os.path.join(save_folder, "vali_data/"),
+            )
+        for f in complete_pd_test["id"]:
+            copy_files(
+                data_directory,
+                f,
+                os.path.join(save_folder, "test_data/"),
+            )
 
 
 def copy_files(data_directory: str, ident: str, stratified_directory: str) -> None:
@@ -166,7 +202,7 @@ if __name__ == "__main__":
         "--test_size", type=float, default=0.2, help="The size of the test split."
     )
     parser.add_argument(
-        "--random_state", type=int, default=5678, help="The random state for the split."
+        "--cv", type=bool, default=False, help="Whether to run cv."
     )
     args = parser.parse_args()
 

@@ -145,6 +145,7 @@ def calculate_xgboost_integration_scores(
         model_binary_unknown_pth,
     )
     scores = evaluate_model(test_data_directory, murmur_probabilities, murmur_outputs)
+    print("---- XGBoost Integration Scores ----")
     print(f"{scores}")
 
     return scores

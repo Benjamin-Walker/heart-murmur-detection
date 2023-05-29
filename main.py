@@ -12,7 +12,7 @@ def main(
     stratified_directory,
     test_size,
     vali_size,
-    random_state,
+    cv,
     recalc_features,
     spectrogram_directory,
     model_name,
@@ -32,7 +32,7 @@ def main(
         stratified_directory,
         test_size,
         vali_size,
-        random_state,
+        cv,
     )
 
     run_model_training(
@@ -42,7 +42,7 @@ def main(
         spectrogram_directory,
         model_name,
         "BinaryPresent",
-        "models",
+        "data/models",
         "binary_present",
         None,
     )
@@ -54,7 +54,7 @@ def main(
         spectrogram_directory,
         model_name,
         "BinaryUnknown",
-        "models",
+        "data/models",
         "binary_unknown",
         None,
     )
@@ -63,16 +63,16 @@ def main(
         recalc_output,
         test_data_directory,
         dbres_output_directory,
-        "models/model_BinaryPresent.pth",
-        "models/model_BinaryUnknown.pth",
+        "data/models/model_BinaryPresent.pth",
+        "data/models/model_BinaryUnknown.pth",
     )
 
     xgb_scores = calculate_xgboost_integration_scores(
         train_data_directory,
         test_data_directory,
         dbres_output_directory,
-        "models/model_BinaryPresent.pth",
-        "models/model_BinaryUnknown.pth",
+        "data/models/model_BinaryPresent.pth",
+        "data/models/model_BinaryUnknown.pth",
     )
 
     return dbres_scores, xgb_scores
@@ -100,7 +100,7 @@ if __name__ == "__main__":
         "--test_size", type=float, default=0.2, help="The size of the test split."
     )
     parser.add_argument(
-        "--random_state", type=int, default=5678, help="The random state for the split."
+        "--cv", type=bool, default=False, help="Whether to run cv."
     )
     parser.add_argument(
         "--recalc_features",
