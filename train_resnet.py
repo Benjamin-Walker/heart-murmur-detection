@@ -79,9 +79,38 @@ def run_model_training(
             model_name=model_label,
             model_dir=model_dir,
         )
-    elif classes_name == "outcome":
+    elif classes_name == "outcome_binary":
         y_train = outcomes_train.to(device)
         y_test = outcomes_test.to(device)
+        model, training = create_model(model_name, 2)
+        training(
+            X_train,
+            y_train,
+            clas_weight=weights,
+            x_val=X_test,
+            y_val=y_test,
+            model=model,
+            model_name=model_label,
+            model_dir=model_dir,
+        )
+    elif classes_name == "murmur_binary":
+        knowledge_train = torch.zeros((murmurs_train.shape[0], 2))
+        for i in range(len(murmurs_train)):
+            if (
+                torch.argmax(murmurs_train[i]) == 0
+                or torch.argmax(murmurs_train[i]) == 1
+            ):
+                knowledge_train[i, 0] = 1
+            else:
+                knowledge_train[i, 1] = 1
+        knowledge_test = torch.zeros((murmurs_test.shape[0], 2))
+        for i in range(len(murmurs_test)):
+            if torch.argmax(murmurs_test[i]) == 0 or torch.argmax(murmurs_test[i]) == 1:
+                knowledge_test[i, 0] = 1
+            else:
+                knowledge_test[i, 1] = 1
+        y_train = knowledge_train.to(device)
+        y_test = knowledge_test.to(device)
         model, training = create_model(model_name, 2)
         training(
             X_train,
@@ -210,10 +239,9 @@ if __name__ == "__main__":
         "--classes_name",
         type=str,
         help="The name of the classes to train the model on.",
-        choices=["murmur", "outcome", "binary_present", "binary_unknown"],
+        choices=["murmur", "outcome_binary", "murmur_binary", "binary_present", "binary_unknown"],
         default="murmur",
     )
-
     parser.add_argument(
         "--weights_str",
         type=str,

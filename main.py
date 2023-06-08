@@ -2,7 +2,7 @@ import argparse
 import os
 
 from dbres import calculate_dbres_scores
-from stratified_data_split import stratified_test_vali_split
+from data_splits import stratified_test_vali_split
 from train_resnet import run_model_training
 from xgboost_integration import calculate_xgboost_integration_scores
 

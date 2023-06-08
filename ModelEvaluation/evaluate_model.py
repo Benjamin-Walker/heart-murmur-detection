@@ -25,95 +25,99 @@ import os.path
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
 
 from DataProcessing.find_and_load_patient_files import load_patient_data
 from DataProcessing.helper_code import compare_strings
-from DataProcessing.label_extraction import get_murmur
+from DataProcessing.label_extraction import get_murmur, get_outcome
 
 
 # Evaluate the models.
-def evaluate_model(label_folder, output_probabilities, output_labels, recordings_file: str=""):
+def evaluate_model(label_folder, output_probabilities, output_labels, model_type, recordings_file: str="", output_directory: str=""):
 
     # Define murmur and outcome classes.
-    murmur_classes = ["Present", "Unknown", "Absent"]
+    if model_type == "murmur":
+        class_options = ["Present", "Unknown", "Absent"]
+        default_class = "Present"
+    elif model_type == "outcome_binary":
+        class_options = ["Abnormal", "Normal"]
+        default_class = "Abnormal"
+    elif model_type == "murmur_binary":
+        class_options = ["Present", "Absent"]
+        default_class = "Present"
+    else:
+        raise ValueError(f"Unknown model type: {model_type}")
+    
+    print(f"Class options: {class_options} for model type {model_type}")
 
     if len(recordings_file) > 0:
+        if model_type != "outcome_binary":
+            raise NotImplementedError("Recordings file only supported for binary outcome classification.")
+        print("Using recordings file for evaluation.")
         df_recordings = pd.read_csv(recordings_file)
         num_patients = len(df_recordings)
-        num_classes = len(murmur_classes)
-        murmur_labels = np.zeros((num_patients, num_classes), dtype=np.bool_)
+        num_classes = len(class_options)
+        true_labels = np.zeros((num_patients, num_classes), dtype=np.bool_)
         for i in range(num_patients):
             label = df_recordings["label"].iloc[i]
-            if label == "murmur":
-                label = "Present"
-            elif label == "normal":
-                label = "Absent"
-            else:
-                label = "Unknown"
-            for j, x in enumerate(murmur_classes):
+            for j, x in enumerate(class_options):
                 if compare_strings(label, x):
-                    murmur_labels[i, j] = 1
+                    true_labels[i, j] = 1
     else:
-        # Load and parse label and model output files.
+        print("Using labels file for evaluation.")
         label_files = find_challenge_files(label_folder)
-        murmur_labels = load_murmurs(label_files, murmur_classes)
+        if model_type == "murmur":
+            true_labels = load_murmurs(label_files, class_options)
+        elif model_type == "outcome_binary":
+            true_labels = load_outcomes(label_files, class_options)
+        elif model_type == "murmur_binary":
+            true_labels = load_binary_murmurs(label_files, class_options)
+        else:
+            raise ValueError("Unknown model type: {}".format(model_type))
 
     # For each patient, set the 'Present' or 'Abnormal' class to positive if no
     # class is positive or if multiple classes are positive.
-    murmur_labels = enforce_positives(murmur_labels, murmur_classes, "Present")
+    true_labels = enforce_positives(true_labels, class_options, default_class)
 
     # Evaluate the murmur model by comparing the labels and model outputs.
     (
-        murmur_auroc,
-        murmur_auprc,
-        murmur_auroc_classes,
-        murmur_auprc_classes,
-    ) = compute_auc(murmur_labels, output_probabilities)
-    murmur_f_measure, murmur_f_measure_classes = compute_f_measure(
-        murmur_labels, output_labels
-    )
-    murmur_accuracy, murmur_accuracy_classes = compute_accuracy(
-        murmur_labels, output_labels
-    )
-    murmur_weighted_accuracy = compute_weighted_accuracy(
-        murmur_labels, output_labels, murmur_classes
-    )  # This is the murmur scoring metric.
-    murmur_scores = (
-        murmur_classes,
-        murmur_auroc,
-        murmur_auprc,
-        murmur_auroc_classes,
-        murmur_auprc_classes,
-        murmur_f_measure,
-        murmur_f_measure_classes,
-        murmur_accuracy,
-        murmur_accuracy_classes,
-        murmur_weighted_accuracy,
-    )
-
-    (
-        classes,
         auroc,
         auprc,
         auroc_classes,
         auprc_classes,
-        f_measure,
-        f_measure_classes,
-        accuracy,
-        accuracy_classes,
-        weighted_accuracy,
-    ) = murmur_scores
+    ) = compute_auc(true_labels, output_probabilities)
+    f_measure, f_measure_classes = compute_f_measure(
+        true_labels, output_labels
+    )
+    accuracy, accuracy_classes = compute_accuracy(
+        true_labels, output_labels
+    )
+    weighted_accuracy = compute_weighted_accuracy(
+        true_labels, output_labels, class_options
+    )  # This is the murmur scoring metric.
+    confusion_matrix_ = compute_confusion_matrix(true_labels, output_labels)
+
     murmur_output_string = (
         "AUROC,AUPRC,F-measure,Accuracy,Weighted Accuracy"
         "\n{:.3f},{:.3f},{:.3f},{:.3f},{:.3f}\n".format(
             auroc, auprc, f_measure, accuracy, weighted_accuracy
         )
     )
+    confusion_matrix_string = (
+        "Confusion Matrix\n"
+        + ",".join(class_options)
+        + "\n"
+        + "\n".join(
+            ",".join(str(x) for x in row) for row in confusion_matrix_
+        )
+        + "\n"
+    )
     murmur_class_output_string = (
         "Classes,{}\nAUROC,{}\nAUPRC,{}\nF-measure,"
         "{}\nAccuracy,"
         "{}\n".format(
-            ",".join(classes),
+            ",".join(class_options),
             ",".join("{:.3f}".format(x) for x in auroc_classes),
             ",".join("{:.3f}".format(x) for x in auprc_classes),
             ",".join("{:.3f}".format(x) for x in f_measure_classes),
@@ -122,11 +126,87 @@ def evaluate_model(label_folder, output_probabilities, output_labels, recordings
     )
 
     output_string = (
-        "#Murmur scores\n"
+        "#Scores\n"
         + murmur_output_string
-        + "\n#Murmur scores (per class)\n"
+        + "\n#MScores (per class)\n"
         + murmur_class_output_string
+        + "\n#Confusion Matrix\n"
+        + confusion_matrix_string
     )
+
+    # Create plots.
+    if len(output_directory) > 0:
+        # Define decision thresholds
+        thresholds = np.linspace(0, 1, 100)
+
+        accuracy_list = []
+        fpr_list = []  # false positive rate
+        fnr_list = []  # false negative rate
+
+        # Check if both classes are contained. If not, add one row to true_labels that contains at position 0 True and at all other positions False.
+        if (np.unique(true_labels[:, 0]).size == 1) and (true_labels[0, 0] == 0):
+            true_labels_aux = np.vstack((true_labels, true_labels[-1]))
+            true_labels_aux[-1, 0] = True
+            true_labels_aux[-1, 1:] = False
+            output_probabilities_aux = np.vstack((output_probabilities, output_probabilities[-1]))
+            output_probabilities_aux[-1, 0] = True
+            output_probabilities_aux[-1, 1:] = False
+            print("Only one class contained in labels, adding dummy class 1.")
+        else:
+            true_labels_aux = true_labels
+            output_probabilities_aux = output_probabilities
+
+        # Calculate metrics for each threshold
+        for threshold in thresholds:
+            predicted_labels = output_probabilities_aux[:, 0]
+            predicted_labels = (predicted_labels >= threshold).astype(int)
+
+            # Create confusion matrix
+            tn, fp, fn, tp = confusion_matrix(true_labels_aux[:, 0], predicted_labels).ravel()
+            
+            # Calculate metrics
+            accuracy = (tp + tn) / (tp + tn + fp + fn)
+            fpr = fp / (fp + tn)  # false positive rate
+            fnr = fn / (fn + tp)  # false negative rate
+
+            # Add metrics to their respective lists
+            accuracy_list.append(accuracy)
+            fpr_list.append(fpr*-1)
+            fnr_list.append(fnr*-1)
+
+        # Generate the plot
+        fig, ax1 = plt.subplots(figsize=(10, 6))
+
+        color = 'tab:blue'
+        ax1.set_xlabel('Decision Threshold', fontsize=14)
+        ax1.set_ylabel('Accuracy', color=color, fontsize=14)
+        ax1.plot(thresholds, accuracy_list, color='tab:blue', label='Accuracy')
+        ax1.tick_params(axis='y', labelcolor=color, labelsize=12)
+        ax1.tick_params(axis='x', labelsize=12)
+
+        ax2 = ax1.twinx()
+        color = 'tab:red'
+        ax2.set_ylabel('- False Positive Rate / - False Negative Rate', color=color, fontsize=14)
+        ax2.plot(thresholds, fpr_list, color='tab:red', label='- False Positive Rate (FP / (FP + TN))')
+        ax2.plot(thresholds, fnr_list, color='tab:orange', label='- False Negative Rate (FN / (FN + TP))')
+        ax2.tick_params(axis='y', labelcolor=color, labelsize=12)
+
+        fig.tight_layout()
+        plt.subplots_adjust(top=0.9)  # Adjust top margin
+        plt.title('Metrics for different decision thresholds for class positive finding class', fontsize=16, pad=20)
+        fig.legend(loc="center right", bbox_to_anchor=(0.95,0.5), bbox_transform=ax1.transAxes, fontsize=12)
+        plt.grid(True)
+
+        # Save the plots
+        if not os.path.exists(output_directory):
+            os.makedirs(output_directory)
+        plot_path_png = os.path.join(output_directory, "threshold_plot.png")
+        plt.savefig(plot_path_png)
+        plot_path_pdf = os.path.join(output_directory, "threshold_plot.pdf")
+        plt.savefig(plot_path_pdf)
+
+        # Close the figure
+        plt.close()
 
     # Return the results.
     return output_string
@@ -164,6 +244,40 @@ def load_murmurs(label_files, classes):
     for i in range(num_patients):
         data = load_patient_data(label_files[i])
         label = get_murmur(data)
+        for j, x in enumerate(classes):
+            if compare_strings(label, x):
+                labels[i, j] = 1
+
+    return labels
+
+
+# Load binary murmurs from label files.
+def load_binary_murmurs(label_files, classes):
+    labels = load_murmurs(label_files, ["Present", "Unknown", "Absent"])
+    
+    # Check if "Present" in classes is at index 0
+    if classes[0] != "Present":
+        raise ValueError("The first class must be 'Present'")
+
+    # Combine Present and Unknown into a single class
+    labels[:, 0] = np.logical_or(labels[:, 0], labels[:, 1])
+    labels = np.delete(labels, 1, 1)
+
+    return labels
+
+
+# Load outcomes from label files.
+def load_outcomes(label_files, classes):
+    num_patients = len(label_files)
+    num_classes = len(classes)
+
+    # Use one-hot encoding for the labels.
+    labels = np.zeros((num_patients, num_classes), dtype=np.bool_)
+
+    # Iterate over the patients.
+    for i in range(num_patients):
+        data = load_patient_data(label_files[i])
+        label = get_outcome(data)
         for j, x in enumerate(classes):
             if compare_strings(label, x):
                 labels[i, j] = 1
@@ -363,7 +477,7 @@ def compute_weighted_accuracy(labels, outputs, classes):
     # Define constants.
     if classes == ["Present", "Unknown", "Absent"]:
         weights = np.array([[5, 3, 1], [5, 3, 1], [5, 3, 1]])
-    elif classes == ["Abnormal", "Normal"]:
+    elif (classes == ["Abnormal", "Normal"]) or (classes == ["Present", "Absent"]):
         weights = np.array([[5, 1], [5, 1]])
     else:
         raise NotImplementedError(

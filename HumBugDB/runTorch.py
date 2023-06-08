@@ -66,8 +66,8 @@ def make_weights_for_balanced_classes(images, nclasses):
 def build_dataloader(
     x_train, y_train, x_val=None, y_val=None, shuffle=True, sampler=None
 ):
-    x_train = torch.tensor(x_train).float()
-    y_train = torch.tensor(y_train).float()
+    x_train = x_train.clone().detach().float() #torch.tensor(x_train).float()
+    y_train = y_train.clone().detach().float() #torch.tensor(y_train).float()
     train_dataset = TensorDataset(x_train, y_train)
     if sampler is None:
         train_loader = DataLoader(
@@ -82,8 +82,8 @@ def build_dataloader(
         )
 
     if x_val is not None:
-        x_val = torch.tensor(x_val).float()
-        y_val = torch.tensor(y_val).float()
+        x_val = x_val.clone().detach().float() #torch.tensor(x_val).float()
+        y_val = y_val.clone().detach().float() #torch.tensor(y_val).float()
         val_dataset = TensorDataset(x_val, y_val)
         val_loader = DataLoader(
             val_dataset, batch_size=hyperparameters.batch_size, shuffle=shuffle

@@ -1,0 +1,52 @@
+-i https://pypi.org/simple
+audioread==3.0.0 ; python_version >= '3.6'
+certifi==2023.5.7 ; python_version >= '3.6'
+cffi==1.15.1
+charset-normalizer==3.1.0 ; python_full_version >= '3.7.0'
+contourpy==1.0.7 ; python_version >= '3.8'
+cycler==0.11.0 ; python_version >= '3.6'
+decorator==5.1.1 ; python_version >= '3.5'
+filelock==3.12.0 ; python_version >= '3.7'
+fonttools==4.39.4 ; python_version >= '3.8'
+idna==3.4 ; python_version >= '3.5'
+importlib-resources==5.12.0 ; python_version < '3.10'
+jinja2==3.1.2 ; python_version >= '3.7'
+joblib==1.2.0 ; python_version >= '3.7'
+kiwisolver==1.4.4 ; python_version >= '3.7'
+lazy-loader==0.2 ; python_version >= '3.7'
+librosa==0.10.0
+llvmlite==0.40.0 ; python_version >= '3.8'
+markupsafe==2.1.2 ; python_version >= '3.7'
+matplotlib==3.7.1
+mpmath==1.3.0
+msgpack==1.0.5
+networkx==3.1 ; python_version >= '3.8'
+numba==0.57.0 ; python_version >= '3.8'
+numpy==1.24.3 ; python_version >= '3.8'
+packaging==23.1 ; python_version >= '3.7'
+pandas==2.0.1
+pillow==9.5.0 ; python_version >= '3.7'
+platformdirs==3.5.1 ; python_version >= '3.7'
+pooch==1.7.0 ; python_version >= '3.7'
+pycparser==2.21
+pyparsing==3.0.9 ; python_full_version >= '3.6.8'
+python-dateutil==2.8.2 ; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'
+pytz==2023.3
+requests==2.31.0 ; python_version >= '3.7'
+resampy==0.4.2
+scikit-learn==1.2.2
+scipy==1.10.1
+seaborn==0.12.2
+six==1.16.0 ; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'
+soundfile==0.12.1
+soxr==0.3.5 ; python_version >= '3.6'
+sympy==1.12 ; python_version >= '3.8'
+threadpoolctl==3.1.0 ; python_version >= '3.6'
+torch==2.0.1
+torchvision==0.15.2
+tqdm==4.65.0
+typing-extensions==4.6.2 ; python_version >= '3.7'
+tzdata==2023.3 ; python_version >= '2'
+urllib3==2.0.2 ; python_version >= '3.7'
+xgboost==1.7.5
+zipp==3.15.0 ; python_version < '3.10'

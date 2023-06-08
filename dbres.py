@@ -23,47 +23,68 @@ def get_binary_spectrogram_outputs(
     spectrograms,
     model_binary_present,
     model_binary_unknown,
+    model_binary
 ):
-    model_outputs_unknown = []
-    model_outputs_present = []
-    unknown_probabilities = []
-    present_probabilities = []
-    for spectrogram in spectrograms:
-        output_present = (
-            calc_patient_output(model_binary_present, [spectrogram], repeats=30)
-            .cpu()
-            .numpy()
-        )
-        output_unknown = (
-            calc_patient_output(model_binary_unknown, [spectrogram], repeats=30)
-            .cpu()
-            .numpy()
-        )
-        model_outputs_present.append(output_present)
-        model_outputs_unknown.append(output_unknown)
-        present_probabilities.append(
-            np.array([1 - output_present[0], output_present[0]])
-        )
-        unknown_probabilities.append(
-            np.array([1 - output_unknown[0], output_unknown[0]])
-        )
-    present_probability = np.mean(np.array(present_probabilities), axis=0)
-    unknown_probability = np.mean(np.array(unknown_probabilities), axis=0)
-    outputs = []
-    idx_unknown = (np.mean(np.array(model_outputs_unknown)) > 0.5).astype(float)
-    idx_present = (np.mean(np.array(model_outputs_present)) > 0.5).astype(float)
-    if idx_present == 0:
-        outputs.append(np.array([1, 0, 0]))
-    elif idx_unknown == 0:
-        outputs.append(np.array([0, 1, 0]))
-    else:
-        outputs.append(np.array([0, 0, 1]))
+    if (model_binary_present is not None) and (model_binary_unknown is not None):
+        model_outputs_unknown = []
+        model_outputs_present = []
+        unknown_probabilities = []
+        present_probabilities = []
+        for spectrogram in spectrograms:
+            output_present = (
+                calc_patient_output(model_binary_present, [spectrogram], repeats=30)
+                .cpu()
+                .numpy()
+            )
+            output_unknown = (
+                calc_patient_output(model_binary_unknown, [spectrogram], repeats=30)
+                .cpu()
+                .numpy()
+            )
+            model_outputs_present.append(output_present)
+            model_outputs_unknown.append(output_unknown)
+            present_probabilities.append(
+                np.array([1 - output_present[0], output_present[0]])
+            )
+            unknown_probabilities.append(
+                np.array([1 - output_unknown[0], output_unknown[0]])
+            )
+        present_probability = np.mean(np.array(present_probabilities), axis=0)
+        unknown_probability = np.mean(np.array(unknown_probabilities), axis=0)
+        outputs = []
+        idx_unknown = (np.mean(np.array(model_outputs_unknown)) > 0.5).astype(float)
+        idx_present = (np.mean(np.array(model_outputs_present)) > 0.5).astype(float)
+        if idx_present == 0:
+            outputs.append(np.array([1, 0, 0]))
+        elif idx_unknown == 0:
+            outputs.append(np.array([0, 1, 0]))
+        else:
+            outputs.append(np.array([0, 0, 1]))
 
-    probabilities = [
-        present_probability[0],
-        present_probability[1] * unknown_probability[0],
-        present_probability[1] * unknown_probability[1],
-    ]
+        probabilities = [
+            present_probability[0],
+            present_probability[1] * unknown_probability[0],
+            present_probability[1] * unknown_probability[1],
+        ]
+    elif model_binary is not None:
+        model_outputs = []
+        probabilities = []
+        for spectrogram in spectrograms:
+            output = (
+                calc_patient_output(model_binary, [spectrogram], repeats=30)
+                .cpu()
+                .numpy()
+            )
+            model_outputs.append(output)
+            probabilities.append(np.array([1 - output[0], output[0]]))
+        probability = np.mean(np.array(probabilities), axis=0)
+        outputs = []
+        idx = (np.mean(np.array(model_outputs)) > 0.5).astype(float)
+        if idx == 0:
+            outputs.append(np.array([1, 0]))
+        else:
+            outputs.append(np.array([0, 1]))
+        probabilities = [probability[0], probability[1]]
 
     return outputs[0].tolist(), probabilities
 
@@ -87,9 +108,11 @@ def calc_patient_output(model, recording_spectrograms, repeats):
 
 
 def calculate_dbres_output(
+    model_name,
     recalc_output,
     data_directory,
     output_directory,
+    model_binary_pth,
     model_binary_present_pth,
     model_binary_unknown_pth,
     recordings_file: str = "",
@@ -101,14 +124,27 @@ def calculate_dbres_output(
             os.makedirs(output_directory)
 
         # Get model
-        model_binary_present = create_model("resnet50dropout", 2)
-        model_binary_unknown = create_model("resnet50dropout", 2)
-        model_binary_present = load_model(
-            model_binary_present_pth, model=model_binary_present[0]
-        )
-        model_binary_unknown = load_model(
-            model_binary_unknown_pth, model=model_binary_unknown[0]
-        )
+        model_binary_present = create_model(model_name, 2)
+        model_binary_unknown = create_model(model_name, 2)
+        model_binary = create_model(model_name, 2)
+
+        # Load model
+        if (model_binary_present_pth is not None) and (model_binary_unknown_pth is not None):
+            print("Loading multiclass model")
+            model_binary_present = load_model(
+                model_binary_present_pth, model=model_binary_present[0]
+            )
+            model_binary_unknown = load_model(
+                model_binary_unknown_pth, model=model_binary_unknown[0]
+            )
+            model_binary = None
+        elif model_binary_pth is not None:
+            print("Loading binary model")
+            model_binary = load_model(model_binary_pth, model=model_binary[0])
+            model_binary_present = None
+            model_binary_unknown = None
+        else:
+            raise Exception("No model was provided.")
 
         # Get data
         murmur_probabilities = list()
@@ -127,12 +163,13 @@ def calculate_dbres_output(
         for i in tqdm(range(num_patient_files)):
             if len(recordings_file) > 0:
                 current_patient_data = patient_files.iloc[i]
-                num_locations = 1
                 current_recordings = list()
-                for i in range(num_locations):
-                    recording, frequency = load_wav_file(patient_files["path"].iloc[i])
-                    current_recordings.append(recording)
+                recording, frequency = load_wav_file(patient_files["path"].iloc[i])
+                current_recordings.append(recording)
+                sample_rate = frequency
+                num_locations = 1
             else:
+                sample_rate=hyperparameters.SAMPLE_RATE
                 current_patient_data = load_patient_data(patient_files[i])
                 current_recordings = load_recordings(data_directory, current_patient_data)
                 num_locations = get_num_locations(current_patient_data)
@@ -142,13 +179,13 @@ def calculate_dbres_output(
             spectrograms = list()
             for j in range(num_locations):
                 mel_spec = waveform_to_examples(
-                    data=current_recordings[j], sample_rate=hyperparameters.SAMPLE_RATE
+                    data=current_recordings[j], sample_rate=sample_rate
                 )
                 spectrograms.append(mel_spec)
 
             # Get predictions
             murmur_output, murmur_probability = get_binary_spectrogram_outputs(
-                spectrograms, model_binary_present, model_binary_unknown
+                spectrograms, model_binary_present, model_binary_unknown, model_binary
             )
             murmur_probabilities.append(murmur_probability)
             murmur_outputs.append(murmur_output)
@@ -156,43 +193,78 @@ def calculate_dbres_output(
         # Store
         murmur_probabilities = np.vstack(murmur_probabilities)
         np.save(
-            os.path.join(output_directory, "murmur_probabilities.npy"),
+            os.path.join(output_directory, "probabilities.npy"),
             murmur_probabilities,
         )
         murmur_outputs = np.vstack(murmur_outputs)
-        np.save(os.path.join(output_directory, "murmur_outputs.npy"), murmur_outputs)
+        np.save(os.path.join(output_directory, "outputs.npy"), murmur_outputs)
     else:
         murmur_probabilities = np.load(
-            os.path.join(output_directory, "murmur_probabilities.npy")
+            os.path.join(output_directory, "probabilities.npy")
         )
-        murmur_outputs = np.load(os.path.join(output_directory, "murmur_outputs.npy"))
+        murmur_outputs = np.load(os.path.join(output_directory, "outputs.npy"))
 
     return murmur_probabilities, murmur_outputs
 
 
 def calculate_dbres_scores(
+    model_name,
     recalc_output,
     data_directory,
     output_directory,
+    model_binary_pth,
     model_binary_present_pth,
     model_binary_unknown_pth,
     recordings_file: str = "",
 ):
 
-    murmur_probabilities, murmur_outputs = calculate_dbres_output(
+    probabilities, outputs = calculate_dbres_output(
+        model_name,
         recalc_output,
         data_directory,
         output_directory,
+        model_binary_pth,
         model_binary_present_pth,
         model_binary_unknown_pth,
         recordings_file
     )
-    scores = evaluate_model(data_directory, murmur_probabilities, murmur_outputs, recordings_file)
+
+    if (model_binary_present_pth is not None) and (model_binary_unknown_pth is not None):
+        model_type = "murmur"
+    elif model_binary_pth is not None:
+        if "MurmurBinary" in model_binary_pth:
+            model_type = "murmur_binary"
+        elif "OutcomeBinary" in model_binary_pth:
+            model_type = "outcome_binary"
+        else:
+            raise Exception("No binary murmur or outcome model was provided.")
+    else:
+        raise Exception("No model was provided.")
+    
+    print(f"--- Evaluating {model_type} model ---")
+    scores = evaluate_model(data_directory, probabilities, outputs, model_type, recordings_file = recordings_file, output_directory = output_directory)
 
     print("--- DBRes scores ---")
     print(f"{scores}")
     with open(os.path.join(output_directory, "DBRes_score.npy"), "w") as text_file:
         text_file.write(scores)
+
+    if model_type == "murmur":
+        print(f"--- Evaluating {model_type} model as binary ---")
+        # Combine element at position 0 and 1 to get binary output, but keep position 2
+        outputs_binary = np.vstack(
+            [np.logical_or(outputs[:, 0], outputs[:, 1]), outputs[:, 2]]
+        ).T
+        probabilities_binary = np.vstack(
+            [np.max(probabilities[:, :2], axis=1), probabilities[:, 2]]
+        ).T
+        scores_binary = evaluate_model(
+            data_directory, probabilities_binary, outputs_binary, "murmur_binary", recordings_file = recordings_file, output_directory = output_directory
+        )
+        print("--- DBRes scores binary ---")
+        print(f"{scores_binary}")
+        with open(os.path.join(output_directory, "DBRes_score_binary.npy"), "w") as text_file:
+            text_file.write(scores_binary)
 
     return scores
 
@@ -200,6 +272,13 @@ def calculate_dbres_scores(
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(prog="DBRes")
+    parser.add_argument(
+        "--model_name",
+        type=str,
+        help="The ResNet to train. Current options are resnet50 or resnet50dropout.",
+        choices=["resnet50", "resnet50dropout"],
+        default="resnet50dropout",
+    )
     parser.add_argument(
         "--recalc_output",
         action="store_true",
@@ -222,16 +301,22 @@ if __name__ == "__main__":
         default="data/dbres_outputs",
     )
     parser.add_argument(
+        "--model_binary_pth",
+        type=str,
+        help="The path of binary ResNet trained to classify present vs not present.",
+        default=None,
+    )
+    parser.add_argument(
         "--model_binary_present_pth",
         type=str,
         help="The path of binary ResNet trained to classify present vs not present.",
-        default="data/models/model_BinaryPresent.pth",
+        default=None,
     )
     parser.add_argument(
         "--model_binary_unknown_pth",
         type=str,
         help="The path of binary ResNet trained to classify unknown vs not unknown.",
-        default="data/models/model_BinaryUnknown.pth",
+        default=None,
     )
     parser.add_argument(
         "--recordings_file",

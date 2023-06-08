@@ -4,7 +4,7 @@ import shutil
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split, StratifiedKFold
+from sklearn.model_selection import train_test_split, StratifiedKFold, KFold
 from tqdm import tqdm
 
 from DataProcessing.find_and_load_patient_files import (
@@ -21,16 +21,15 @@ def stratified_test_vali_split(
     stratified_directory: str,
     test_size: float,
     vali_size: float,
-    random_states: list = [0, 11, 42, 101, 1001],
+    random_states: list = [42],
     cv: bool = False,
-    n_splits: int = 5,
+    n_splits: int = 10,
+    stratified_cv: bool = False,
 ):
     # Check if stratified_directory directory exists, otherwise create it.
     if not os.path.exists(stratified_directory):
         os.makedirs(stratified_directory)
-    else:
-        shutil.rmtree(stratified_directory)
-        os.makedirs(stratified_directory)
+
     # Get metadata
     patient_files = find_patient_files(data_directory)
     num_patient_files = len(patient_files)
@@ -100,23 +99,43 @@ def stratified_test_vali_split(
     complete_pd_test_list = list()
     cnums = list()
     if cv:
-        skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
-        for i, (train_index, test_index) in enumerate(
-            skf.split(complete_pd, complete_pd["stratify_column"])
-        ):
-            cnums.append(f"split_{i}")
-            complete_pd_train, complete_pd_test = complete_pd.iloc[train_index], complete_pd.iloc[test_index]
-            vali_split = vali_size / (1 - test_size)
-            complete_pd_train, complete_pd_val = train_test_split(
-                complete_pd_train,
-                test_size=vali_split,
-                random_state=42,
-                stratify=complete_pd_train["stratify_column"],
-            )
-            complete_pd_train_list.append(complete_pd_train)
-            complete_pd_val_list.append(complete_pd_val)
-            complete_pd_test_list.append(complete_pd_test)
+        if stratified_cv:
+            print("Performing stratified cross-validation")
+            skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+            for i, (train_index, test_index) in enumerate(
+                skf.split(complete_pd, complete_pd["stratify_column"])
+            ):
+                cnums.append(f"split_{i}")
+                complete_pd_train, complete_pd_test = complete_pd.iloc[train_index], complete_pd.iloc[test_index]
+                vali_split = vali_size / (1 - test_size)
+                complete_pd_train, complete_pd_val = train_test_split(
+                    complete_pd_train,
+                    test_size=vali_split,
+                    random_state=42,
+                    stratify=complete_pd_train["stratify_column"],
+                )
+                complete_pd_train_list.append(complete_pd_train)
+                complete_pd_val_list.append(complete_pd_val)
+                complete_pd_test_list.append(complete_pd_test)
+        else:
+            print("Performing random cross-validation")
+            kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
+            for i, (train_index, test_index) in enumerate(
+                kf.split(complete_pd)
+            ):
+                cnums.append(f"split_{i}")
+                complete_pd_train, complete_pd_test = complete_pd.iloc[train_index], complete_pd.iloc[test_index]
+                vali_split = vali_size / (1 - test_size)
+                complete_pd_train, complete_pd_val = train_test_split(
+                    complete_pd_train,
+                    test_size=vali_split,
+                    random_state=42,
+                )
+                complete_pd_train_list.append(complete_pd_train)
+                complete_pd_val_list.append(complete_pd_val)
+                complete_pd_test_list.append(complete_pd_test)
     else:
+        print("Performing statified split")
         for random_state in random_states:
             cnums.append(f"seed_{random_state}")
             complete_pd_train, complete_pd_test = train_test_split(
@@ -141,7 +160,10 @@ def stratified_test_vali_split(
         cnums, complete_pd_train_list, complete_pd_val_list, complete_pd_test_list
     ):
         print(f"Saving split {cnum} with cv {cv} from {len(cnums)} splits...")
-        save_folder = os.path.join(stratified_directory, f"cv_{cv}", cnum)
+        if cv:
+            save_folder = os.path.join(stratified_directory, f"cv_{cv}_stratified_{stratified_cv}", cnum)
+        else:
+            save_folder = os.path.join(stratified_directory, f"cv_{cv}", cnum)
         os.makedirs(os.path.join(save_folder, "train_data"))
         os.makedirs(os.path.join(save_folder, "vali_data"))
         os.makedirs(os.path.join(save_folder, "test_data"))
@@ -193,7 +215,7 @@ if __name__ == "__main__":
         "--stratified_directory",
         type=str,
         help="The directory to store the split data.",
-        default="data/stratified_data",
+        default="data/a_splits",
     )
     parser.add_argument(
         "--vali_size", type=float, default=0.16, help="The size of the test split."
@@ -203,6 +225,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--cv", type=bool, default=False, help="Whether to run cv."
+    )
+    parser.add_argument(
+        "--stratified_cv", type=bool, default=False, help="Whether to run cv."
     )
     args = parser.parse_args()
 

@@ -1,15 +1,11 @@
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/dual-bayesian-resnet-a-deep-learning-approach/classify-murmurs-on-circor-digiscope)](https://paperswithcode.com/sota/classify-murmurs-on-circor-digiscope?p=dual-bayesian-resnet-a-deep-learning-approach)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 
 ## Heart Murmur Detection using Bayesian Residual Neural Networks
 
-### Our entry to the George B. Moody PhysioNet Challenge 2022: Heart Murmur Detection from Phonocardiogram Recordings
+### This is the extension of our entry to the George B. Moody PhysioNet Challenge 2022: Heart Murmur Detection from Phonocardiogram Recordings
 
-When using this code, please cite [our paper](https://cinc.org/archives/2022/pdf/CinC2022-355.pdf): 
-
-> Benjamin Walker, Felix Krones, Ivan Kiskin, Guy Parsons, Terry Lyons, and Adam Mahdi.
-> "Dual Bayesian ResNet: A Deep Learning Approach to Heart Murmur Detection", 
-> Computing in Cardiology, 2022.
+When using this code, please cite [the challenge paper](https://cinc.org/archives/2022/pdf/CinC2022-355.pdf) as well as [the journal paper]().
 
 This repository contains our solution to the first task from the PhysioNet 
 Challenge 2022: Design an algorithm to classify the present, absent, or unknown cases 
@@ -89,19 +85,7 @@ Guy Parsons<sup>5</sup>, Terence Lyons<sup>1</sup>, Adam Mahdi<sup>2,3</sup>
 
 ## Acknowledgment
 
-This work was supported by the Hong Kong Innovation and Technology Commission (InnoHK Project CIMDA).
-
-## References
-
-When using this code, please cite [1].
-
-[1]: Walker B, Krones F, Kiskin I, Parsons G, Lyons T, and Mahdi A. 
-"Dual Bayesian ResNet: A Deep Learning Approach to Heart Murmur Detection", 
-Computing in Cardiology, 2022.
-
-[2] Reyna MA, Kiarashi Y, Elola A, Oliveira J, Renna F, Gu
-A, et al. "Heart murmur detection from phonocardiogram
-recordings: The George B. Moody Physionet Challenge 2022".
+This work was supported by the Hong Kong Innovation and Technology Commission (InnoHK Project CIMDA) and the Friedrich Naumann Foundation.
 
 
 ## Bibtex Citation
