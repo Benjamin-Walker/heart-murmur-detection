@@ -202,7 +202,7 @@ def copy_files(data_directory: str, ident: str, stratified_directory: str) -> No
 
 if __name__ == "__main__":
 
-    print("---------------- Starting stratified_data_split.py to split the data ----------------")
+    print("---------------- Starting data_splits.py to split the data ----------------")
 
     parser = argparse.ArgumentParser(prog="StratifiedDataSplit")
     parser.add_argument(

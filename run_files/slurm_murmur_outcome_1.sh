@@ -1,12 +1,13 @@
 #!/bin/bash
 
 #SBATCH --nodes=1
-#SBATCH --mem=120G
+#SBATCH --mem=180G
 #SBATCH --ntasks-per-node=28
-#SBATCH --gres=gpu:v100:1
+#SBATCH --gres=gpu:1
+#SBATCH --constraint='gpu_mem:32GB'
 #SBATCH --clusters=htc
-#SBATCH --time=72:00:00
-#SBATCH --partition=long
+#SBATCH --time=12:00:00
+#SBATCH --partition=short
 #SBATCH --job-name=murout1
 
 #SBATCH --mail-type=BEGIN,END

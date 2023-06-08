@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+import time
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -111,6 +112,7 @@ def train_model(
     overrun_counter = 0
 
     for e in range(hyperparameters.epochs):
+        start_time = time.time()
         train_loss = 0.0
         model.train()
 
@@ -185,6 +187,7 @@ def train_model(
                 "Epoch: %d, Train Loss: %.8f, Train Acc: %.8f, overrun_counter %i"
                 % (e, train_loss / len(train_loader), train_acc, overrun_counter)
             )
+        print(f"Training epoch {e} took {round((time.time()-start_time)/60,4)} min.")
         if overrun_counter > hyperparameters.max_overrun:
             break
     return model
