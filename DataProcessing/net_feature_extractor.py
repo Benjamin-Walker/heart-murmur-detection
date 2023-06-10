@@ -134,7 +134,7 @@ def calc_patient_features(data_directory):
     spectrograms = list()
     murmurs = list()
     outcomes = list()
-    for i in tqdm(range(num_patient_files)):
+    for i in range(num_patient_files):
 
         # Load the current patient data and recordings.
         current_patient_data = load_patient_data(patient_files[i])

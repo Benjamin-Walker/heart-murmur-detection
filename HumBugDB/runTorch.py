@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+import time
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -139,12 +140,13 @@ def train_model(
     output_string_to_save = ""
     overrun_counter = 0
     for e in range(hyperparameters.epochs):
+        start_time = time.time()
         train_loss = 0.0
         model.train()
 
         all_y = []
         all_y_pred = []
-        for batch_i, inputs in tqdm(enumerate(train_loader), total=len(train_loader)):
+        for batch_i, inputs in enumerate(train_loader):
 
             x = inputs[:-1][0].repeat(1, 3, 1, 1)
             y = torch.argmax(inputs[1], dim=1, keepdim=True).float()
@@ -228,6 +230,7 @@ def train_model(
             )
         print(output_string)
         output_string_to_save += output_string + "\n"
+        print(f"Training epoch {e} took {round((time.time()-start_time)/60,4)} min.")
         if overrun_counter > hyperparameters.max_overrun:
             break
     

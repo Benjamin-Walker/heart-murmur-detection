@@ -40,7 +40,7 @@ def get_murmurs_features(
 
     features = list()
     labels = list()
-    for i in tqdm(range(num_patient_files)):
+    for i in range(num_patient_files):
 
         # Load the current patient data and recordings.
         current_patient_data = load_patient_data(patient_files[i])
@@ -317,5 +317,8 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+
+    print("---------------- Starting xgboost_integration.py for training ----------------")
+    print(f"---------------- Using data from {args.train_data_directory}")
 
     scores = calculate_xgboost_integration_scores(**vars(args))
