@@ -122,11 +122,14 @@ def train_xgboost_integration(
     )
 
     if use_weights:
+        w_pos = 5
+        print(f"Using postivie class sample weight {w_pos}.")
         sample_weights = np.ones(len(murmurs))
         for i in range(len(murmurs)):
             if murmurs[i][0] == 1:
-                sample_weights[i] = 2.8
+                sample_weights[i] = w_pos
     else:
+        print("Not using sample weights.")
         sample_weights = None
 
     murmur_classifier = xgb.XGBClassifier()

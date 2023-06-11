@@ -123,4 +123,4 @@ python xgboost_integration.py --train_data_directory data/a_splits/cv_True_strat
 
 
 # EVALUATE OUTCOME ON 2016 #####################################################
-python dbres.py --recalc_output --recordings_file data/e_challenge_anaylsis/2016_challenge_annotations.csv --output_directory data/f_pyc2016/dbres_outputs --model_binary_pth data/c_models/cv_True_stratified_False/split_0/model_OutcomeBinary.pth 
+python dbres.py --recalc_output --recordings_file data/e_challenge_anaylsis/2016_challenge_annotations.csv --output_directory data/f_pyc2016/dbres_outputs --model_binary_pth data/c_models/cv_True_stratified_False/split_0/model_OutcomeBinary.pth
