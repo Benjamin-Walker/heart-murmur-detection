@@ -100,7 +100,8 @@ def train_xgboost_integration(
     model_binary_pth,
     model_binary_present_pth,
     model_binary_unknown_pth,
-    model_type
+    model_type,
+    use_weights=False
 ):
     
     if os.path.exists(dbres_output_directory):
@@ -120,8 +121,16 @@ def train_xgboost_integration(
         model_type=model_type
     )
 
+    if use_weights:
+        sample_weights = np.ones(len(murmurs))
+        for i in range(len(murmurs)):
+            if murmurs[i][0] == 1:
+                sample_weights[i] = 2.8
+    else:
+        sample_weights = None
+
     murmur_classifier = xgb.XGBClassifier()
-    murmur_classifier.fit(features_combined, murmurs) #, sample_weight=-2 * np.argmax(murmurs, axis=1) + 5)
+    murmur_classifier.fit(features_combined, murmurs, sample_weight = sample_weights)
 
     return murmur_classifier
 
@@ -175,7 +184,8 @@ def calculate_xgboost_integration_scores(
     model_binary_present_pth,
     model_binary_unknown_pth,
     output_directory,
-    recordings_file
+    recordings_file,
+    use_weights
 ):
     
     if (model_binary_present_pth is not None) and (model_binary_unknown_pth is not None):
@@ -202,7 +212,8 @@ def calculate_xgboost_integration_scores(
             model_binary_pth,
             model_binary_present_pth,
             model_binary_unknown_pth,
-            model_type=model_type
+            model_type=model_type,
+            use_weights=use_weights,
         )
         # Save the model.
         if "binary" in model_type:
@@ -314,6 +325,12 @@ if __name__ == "__main__":
         type=str,
         help="The path to a recordings file.",
         default="",
+    )
+    parser.add_argument(
+        "--use_weights",
+        type=bool,
+        help="Whether to use weights in the training data.",
+        default=False,
     )
 
     args = parser.parse_args()
