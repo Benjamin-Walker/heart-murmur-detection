@@ -160,7 +160,7 @@ def calculate_dbres_output(
             raise Exception("No data was provided.")
         
         # Get spectrograms and predictions
-        for i in range(num_patient_files):
+        for i in tqdm(range(num_patient_files)):
             if len(recordings_file) > 0:
                 current_patient_data = patient_files.iloc[i]
                 current_recordings = list()
