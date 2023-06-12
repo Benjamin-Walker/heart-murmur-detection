@@ -193,7 +193,7 @@ def evaluate_model(label_folder, output_probabilities, output_labels, model_type
 
         fig.tight_layout()
         plt.subplots_adjust(top=0.9)  # Adjust top margin
-        plt.title('Metrics for different decision thresholds for class positive finding class', fontsize=16, pad=20)
+        plt.title('Metrics for different decision thresholds for the positive finding class', fontsize=16, pad=20)
         fig.legend(loc="center right", bbox_to_anchor=(0.95,0.5), bbox_transform=ax1.transAxes, fontsize=12)
         plt.grid(True)
 
