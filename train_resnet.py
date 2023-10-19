@@ -13,7 +13,7 @@ from HumBugDB.runTorchMultiClass import train_model as train_model_multi
 
 
 def create_model(model_name, num_classes):
-    if model_name == "resent50":
+    if model_name == "resnet50":
         if num_classes == 2:
             model = ResnetBinary()
             training = train_model_binary

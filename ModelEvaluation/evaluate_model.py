@@ -175,27 +175,25 @@ def evaluate_model(label_folder, output_probabilities, output_labels, model_type
             fnr_list.append(fnr*-1)
 
         # Generate the plot
+        fontsize=18
         fig, ax1 = plt.subplots(figsize=(10, 6))
-
         color = 'tab:blue'
-        ax1.set_xlabel('Decision Threshold', fontsize=14)
-        ax1.set_ylabel('Accuracy', color=color, fontsize=14)
-        ax1.plot(thresholds, accuracy_list, color='tab:blue', label='Accuracy')
-        ax1.tick_params(axis='y', labelcolor=color, labelsize=12)
-        ax1.tick_params(axis='x', labelsize=12)
-
+        ax1.set_xlabel('Decision Threshold', fontsize=fontsize)  # Increase axis label size
+        ax1.set_ylabel('Accuracy', color=color, fontsize=fontsize)  # Increase axis label size
+        ax1.plot(thresholds, accuracy_list, color='tab:blue', label='Accuracy', linewidth=4)  # Increase line thickness
+        ax1.tick_params(axis='y', labelcolor=color, labelsize=fontsize*0.9)  # Increase tick label size
+        ax1.tick_params(axis='x', labelsize=fontsize*0.9)  # Increase tick label size
         ax2 = ax1.twinx()
-        color = 'tab:red'
-        ax2.set_ylabel('- False Positive Rate / - False Negative Rate', color=color, fontsize=14)
-        ax2.plot(thresholds, fpr_list, color='tab:red', label='- False Positive Rate (FP / (FP + TN))')
-        ax2.plot(thresholds, fnr_list, color='tab:orange', label='- False Negative Rate (FN / (FN + TP))')
-        ax2.tick_params(axis='y', labelcolor=color, labelsize=12)
-
+        color = 'red'  # Changed to dark red
+        ax2.set_ylabel('- FPR / - FNR', color=color, fontsize=fontsize)  # Increase axis label size
+        ax2.plot(thresholds, fpr_list, color=color, label='- FPR (FP / (FP + TN))', linewidth=4, linestyle='dashdot')  # Changed to dark red, increase line thickness
+        ax2.plot(thresholds, fnr_list, color=color, label='- FNR (FN / (FN + TP))', linewidth=4, linestyle='dashed') # Changed to red, increase line thickness
+        ax2.tick_params(axis='y', labelcolor=color, labelsize=fontsize*0.9)  # Increase tick label size
         fig.tight_layout()
-        plt.subplots_adjust(top=0.9)  # Adjust top margin
-        plt.title('Metrics for different decision thresholds for the positive finding class', fontsize=16, pad=20)
-        fig.legend(loc="center right", bbox_to_anchor=(0.95,0.5), bbox_transform=ax1.transAxes, fontsize=12)
-        plt.grid(True)
+        plt.subplots_adjust(top=0.9, bottom=0.15)  # Adjust top and bottom margin
+        plt.title('Metrics for different decision thresholds for the positive finding class', fontsize=fontsize, pad=20)
+        fig.legend(loc="upper center", bbox_to_anchor=(0.5, 0.3), bbox_transform=ax1.transAxes, fontsize=fontsize)  # Move legend to the bottom
+        plt.grid(False)  # Remove grid
 
         # Save the plots
         if not os.path.exists(output_directory):
