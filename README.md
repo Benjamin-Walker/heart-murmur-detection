@@ -60,9 +60,10 @@ pipenv install
 ```
 
 ## Running Experiments
+You can run all steps using the template files in `run_files`.`
 
 A full experiment consists of four steps:
-1. Splitting the data into stratified train, test, and validation sets (`stratified_data_split.py`).
+1. Splitting the data into stratified train, test, and validation sets (`data_split.py`).
 2. Training the Bayesian ResNets on their respective binary classification tasks (`train_resnet.py`).
 3. Calculating and evaluating the output from DBRes (`dbres.py`).
 4. Calculating and evaluating the output from DBRes with XGBoost integration (`xgboost_integration.py`).
