@@ -1,0 +1,249 @@
+---------------- Starting dbres.py for predictions and evaluations ----------------
+---------------- Using data from data/a_splits/cv_True_stratified_False/split_0/test_data
+Loading binary model
+100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 95/95 [04:39<00:00,  2.94s/it]
+--- Evaluating murmur_binary model ---
+Class options: ['Present', 'Absent'] for model type murmur_binary
+Using labels file for evaluation.
+--- DBRes scores ---
+#Scores
+AUROC,AUPRC,F-measure,Accuracy,Weighted Accuracy
+0.871,0.884,0.842,0.895,0.744
+
+#MScores (per class)
+Classes,Present,Absent
+AUROC,0.871,0.871
+AUPRC,0.825,0.943
+F-measure,0.750,0.933
+Accuracy,0.600,1.000
+
+#Confusion Matrix
+Confusion Matrix
+Present,Absent
+15.0,0.0
+10.0,70.0
+
+---------------- Starting dbres.py for predictions and evaluations ----------------
+---------------- Using data from data/a_splits/cv_True_stratified_False/split_1/test_data
+Loading binary model
+100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 95/95 [04:29<00:00,  2.84s/it]
+--- Evaluating murmur_binary model ---
+Class options: ['Present', 'Absent'] for model type murmur_binary
+Using labels file for evaluation.
+--- DBRes scores ---
+#Scores
+AUROC,AUPRC,F-measure,Accuracy,Weighted Accuracy
+0.820,0.828,0.723,0.800,0.584
+
+#MScores (per class)
+Classes,Present,Absent
+AUROC,0.820,0.820
+AUPRC,0.761,0.894
+F-measure,0.578,0.869
+Accuracy,0.419,0.984
+
+#Confusion Matrix
+Confusion Matrix
+Present,Absent
+13.0,1.0
+18.0,63.0
+
+---------------- Starting dbres.py for predictions and evaluations ----------------
+---------------- Using data from data/a_splits/cv_True_stratified_False/split_2/test_data
+Loading binary model
+100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 94/94 [05:00<00:00,  3.20s/it]
+--- Evaluating murmur_binary model ---
+Class options: ['Present', 'Absent'] for model type murmur_binary
+Using labels file for evaluation.
+--- DBRes scores ---
+#Scores
+AUROC,AUPRC,F-measure,Accuracy,Weighted Accuracy
+0.675,0.616,0.538,0.766,0.560
+
+#MScores (per class)
+Classes,Present,Absent
+AUROC,0.675,0.675
+AUPRC,0.313,0.920
+F-measure,0.214,0.863
+Accuracy,0.214,0.863
+
+#Confusion Matrix
+Confusion Matrix
+Present,Absent
+3.0,11.0
+11.0,69.0
+
+---------------- Starting dbres.py for predictions and evaluations ----------------
+---------------- Using data from data/a_splits/cv_True_stratified_False/split_3/test_data
+Loading binary model
+100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 94/94 [04:50<00:00,  3.09s/it]
+--- Evaluating murmur_binary model ---
+Class options: ['Present', 'Absent'] for model type murmur_binary
+Using labels file for evaluation.
+--- DBRes scores ---
+#Scores
+AUROC,AUPRC,F-measure,Accuracy,Weighted Accuracy
+0.927,0.920,0.832,0.872,0.794
+
+#MScores (per class)
+Classes,Present,Absent
+AUROC,0.927,0.927
+AUPRC,0.883,0.957
+F-measure,0.750,0.914
+Accuracy,0.720,0.928
+
+#Confusion Matrix
+Confusion Matrix
+Present,Absent
+18.0,5.0
+7.0,64.0
+
+---------------- Starting dbres.py for predictions and evaluations ----------------
+---------------- Using data from data/a_splits/cv_True_stratified_False/split_4/test_data
+Loading binary model
+100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 94/94 [04:49<00:00,  3.07s/it]
+--- Evaluating murmur_binary model ---
+Class options: ['Present', 'Absent'] for model type murmur_binary
+Using labels file for evaluation.
+--- DBRes scores ---
+#Scores
+AUROC,AUPRC,F-measure,Accuracy,Weighted Accuracy
+0.870,0.874,0.774,0.840,0.668
+
+#MScores (per class)
+Classes,Present,Absent
+AUROC,0.870,0.870
+AUPRC,0.814,0.935
+F-measure,0.651,0.897
+Accuracy,0.519,0.970
+
+#Confusion Matrix
+Confusion Matrix
+Present,Absent
+14.0,2.0
+13.0,65.0
+
+---------------- Starting dbres.py for predictions and evaluations ----------------
+---------------- Using data from data/a_splits/cv_True_stratified_False/split_5/test_data
+Loading binary model
+100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 94/94 [04:26<00:00,  2.84s/it]
+--- Evaluating murmur_binary model ---
+Class options: ['Present', 'Absent'] for model type murmur_binary
+Using labels file for evaluation.
+--- DBRes scores ---
+#Scores
+AUROC,AUPRC,F-measure,Accuracy,Weighted Accuracy
+0.861,0.864,0.755,0.830,0.631
+
+#MScores (per class)
+Classes,Present,Absent
+AUROC,0.861,0.861
+AUPRC,0.808,0.920
+F-measure,0.619,0.890
+Accuracy,0.464,0.985
+
+#Confusion Matrix
+Confusion Matrix
+Present,Absent
+13.0,1.0
+15.0,65.0
+
+---------------- Starting dbres.py for predictions and evaluations ----------------
+---------------- Using data from data/a_splits/cv_True_stratified_False/split_6/test_data
+Loading binary model
+100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 94/94 [04:38<00:00,  2.96s/it]
+--- Evaluating murmur_binary model ---
+Class options: ['Present', 'Absent'] for model type murmur_binary
+Using labels file for evaluation.
+--- DBRes scores ---
+#Scores
+AUROC,AUPRC,F-measure,Accuracy,Weighted Accuracy
+0.836,0.833,0.670,0.787,0.534
+
+#MScores (per class)
+Classes,Present,Absent
+AUROC,0.836,0.836
+AUPRC,0.772,0.893
+F-measure,0.474,0.867
+Accuracy,0.321,0.985
+
+#Confusion Matrix
+Confusion Matrix
+Present,Absent
+9.0,1.0
+19.0,65.0
+
+---------------- Starting dbres.py for predictions and evaluations ----------------
+---------------- Using data from data/a_splits/cv_True_stratified_False/split_7/test_data
+Loading binary model
+100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 94/94 [04:54<00:00,  3.14s/it]
+--- Evaluating murmur_binary model ---
+Class options: ['Present', 'Absent'] for model type murmur_binary
+Using labels file for evaluation.
+--- DBRes scores ---
+#Scores
+AUROC,AUPRC,F-measure,Accuracy,Weighted Accuracy
+0.926,0.905,0.788,0.883,0.691
+
+#MScores (per class)
+Classes,Present,Absent
+AUROC,0.926,0.926
+AUPRC,0.833,0.977
+F-measure,0.645,0.930
+Accuracy,0.476,1.000
+
+#Confusion Matrix
+Confusion Matrix
+Present,Absent
+10.0,0.0
+11.0,73.0
+
+---------------- Starting dbres.py for predictions and evaluations ----------------
+---------------- Using data from data/a_splits/cv_True_stratified_False/split_8/test_data
+Loading binary model
+100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 94/94 [04:59<00:00,  3.18s/it]
+--- Evaluating murmur_binary model ---
+Class options: ['Present', 'Absent'] for model type murmur_binary
+Using labels file for evaluation.
+--- DBRes scores ---
+#Scores
+AUROC,AUPRC,F-measure,Accuracy,Weighted Accuracy
+0.864,0.869,0.774,0.840,0.668
+
+#MScores (per class)
+Classes,Present,Absent
+AUROC,0.864,0.864
+AUPRC,0.801,0.936
+F-measure,0.651,0.897
+Accuracy,0.519,0.970
+
+#Confusion Matrix
+Confusion Matrix
+Present,Absent
+14.0,2.0
+13.0,65.0
+
+---------------- Starting dbres.py for predictions and evaluations ----------------
+---------------- Using data from data/a_splits/cv_True_stratified_False/split_9/test_data
+Loading binary model
+100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 94/94 [04:39<00:00,  2.97s/it]
+--- Evaluating murmur_binary model ---
+Class options: ['Present', 'Absent'] for model type murmur_binary
+Using labels file for evaluation.
+--- DBRes scores ---
+#Scores
+AUROC,AUPRC,F-measure,Accuracy,Weighted Accuracy
+0.545,0.582,0.460,0.638,0.404
+
+#MScores (per class)
+Classes,Present,Absent
+AUROC,0.545,0.545
+AUPRC,0.311,0.853
+F-measure,0.150,0.770
+Accuracy,0.143,0.781
+
+#Confusion Matrix
+Confusion Matrix
+Present,Absent
+3.0,16.0
+18.0,57.0
