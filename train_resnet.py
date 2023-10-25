@@ -12,8 +12,9 @@ from HumBugDB.runTorchMultiClass import ResnetFull as ResnetMulti
 from HumBugDB.runTorchMultiClass import train_model as train_model_multi
 
 
-def create_model(model_name, num_classes):
+def create_model(model_name, num_classes, bayesian):
     if model_name == "resnet50":
+        print("Running resnet without dropout")
         if num_classes == 2:
             model = ResnetBinary()
             training = train_model_binary
@@ -21,11 +22,12 @@ def create_model(model_name, num_classes):
             model = ResnetMulti(num_classes)
             training = train_model_multi
     elif model_name == "resnet50dropout":
+        print(f"Creating dropout model with bayesian: {bayesian}")
         if num_classes == 2:
-            model = ResnetDropoutBinary(dropout=hyperparameters.dropout)
+            model = ResnetDropoutBinary(dropout=hyperparameters.dropout, bayesian=bayesian)
             training = train_model_binary
         else:
-            model = ResnetDropoutMulti(num_classes)
+            model = ResnetDropoutMulti(n_classes=num_classes, bayesian=bayesian)
             training = train_model_multi
     else:
         raise NotImplementedError("Only implemented resnet50 and resnet50dropout")
@@ -42,6 +44,7 @@ def run_model_training(
     model_label,
     model_dir,
     classes_name,
+    bayesian,
     weights,
 ):
 
@@ -68,7 +71,7 @@ def run_model_training(
     if classes_name == "murmur":
         y_train = murmurs_train.to(device)
         y_test = murmurs_test.to(device)
-        model, training = create_model(model_name, 3)
+        model, training = create_model(model_name, 3, bayesian)
         training(
             X_train,
             y_train,
@@ -82,7 +85,7 @@ def run_model_training(
     elif classes_name == "outcome_binary":
         y_train = outcomes_train.to(device)
         y_test = outcomes_test.to(device)
-        model, training = create_model(model_name, 2)
+        model, training = create_model(model_name, 2, bayesian)
         training(
             X_train,
             y_train,
@@ -111,7 +114,7 @@ def run_model_training(
                 knowledge_test[i, 1] = 1
         y_train = knowledge_train.to(device)
         y_test = knowledge_test.to(device)
-        model, training = create_model(model_name, 2)
+        model, training = create_model(model_name, 2, bayesian)
         training(
             X_train,
             y_train,
@@ -140,7 +143,7 @@ def run_model_training(
                 knowledge_test[i, 0] = 1
         y_train = knowledge_train.to(device)
         y_test = knowledge_test.to(device)
-        model, training = create_model(model_name, 2)
+        model, training = create_model(model_name, 2, bayesian)
         training(
             X_train,
             y_train,
@@ -169,7 +172,7 @@ def run_model_training(
                 knowledge_test[i, 0] = 1
         y_train = knowledge_train.to(device)
         y_test = knowledge_test.to(device)
-        model, training = create_model(model_name, 2)
+        model, training = create_model(model_name, 2, bayesian)
         training(
             X_train,
             y_train,
@@ -241,6 +244,13 @@ if __name__ == "__main__":
         help="The name of the classes to train the model on.",
         choices=["murmur", "outcome_binary", "murmur_binary", "binary_present", "binary_unknown"],
         default="murmur",
+    )
+    parser.add_argument(
+        '--disable-bayesian', 
+        dest='bayesian', 
+        action='store_false', 
+        default=True,
+        help='Disable Bayesian features (default: Bayesian is enabled)'
     )
     parser.add_argument(
         "--weights_str",

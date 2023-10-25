@@ -18,6 +18,7 @@ def main(
     model_name,
     recalc_output,
     dbres_output_directory,
+    bayesian
 ):
 
     train_data_directory = os.path.join(stratified_directory, "train_data")
@@ -44,6 +45,7 @@ def main(
         "BinaryPresent",
         "data/models",
         "binary_present",
+        bayesian,
         None,
     )
 
@@ -56,6 +58,7 @@ def main(
         "BinaryUnknown",
         "data/models",
         "binary_unknown",
+        bayesian,
         None,
     )
 
@@ -73,6 +76,7 @@ def main(
         dbres_output_directory,
         "data/models/model_BinaryPresent.pth",
         "data/models/model_BinaryUnknown.pth",
+        bayesian=bayesian
     )
 
     return dbres_scores, xgb_scores
@@ -140,7 +144,19 @@ if __name__ == "__main__":
         help="The directory in which DBRes's output is saved.",
         default="data/dbres_outputs",
     )
+    parser.add_argument(
+        '--disable-bayesian', 
+        dest='bayesian', 
+        action='store_false', 
+        default=True,
+        help='Disable Bayesian features (default: Bayesian is enabled)'
+    )
 
     args = parser.parse_args()
+
+    if "dropout" in args.model_name:
+        args["bayesian"] = True
+    else:
+        args["bayesian"] = False
 
     dbres_scores, xgb_scores = main(**vars(args))

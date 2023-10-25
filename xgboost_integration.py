@@ -24,7 +24,8 @@ def get_murmurs_features(
     model_binary_pth,
     model_binary_present_pth,
     model_binary_unknown_pth,
-    model_type
+    model_type,
+    bayesian
 ):
     patient_files = find_patient_files(data_directory)
     num_patient_files = len(patient_files)
@@ -84,6 +85,7 @@ def get_murmurs_features(
         model_binary_pth,
         model_binary_present_pth,
         model_binary_unknown_pth,
+        bayesian
     )
 
     features_combined = np.vstack(
@@ -101,7 +103,8 @@ def train_xgboost_integration(
     model_binary_present_pth,
     model_binary_unknown_pth,
     model_type,
-    use_weights=False
+    use_weights=False,
+    bayesian=True,
 ):
     
     if os.path.exists(dbres_output_directory):
@@ -118,7 +121,8 @@ def train_xgboost_integration(
         model_binary_pth,
         model_binary_present_pth,
         model_binary_unknown_pth,
-        model_type=model_type
+        model_type=model_type,
+        bayesian=bayesian
     )
 
     if use_weights:
@@ -147,7 +151,8 @@ def test_xgboost_integration(
     model_binary_present_pth,
     model_binary_unknown_pth,
     model_type,
-    recordings_file
+    recordings_file,
+    bayesian=True,
 ):
 
     if os.path.exists(dbres_output_directory):
@@ -165,7 +170,8 @@ def test_xgboost_integration(
         model_binary_pth,
         model_binary_present_pth,
         model_binary_unknown_pth,
-        model_type=model_type
+        model_type=model_type,
+        bayesian=bayesian
     )
 
     murmur_probabilities = murmur_classifier.predict_proba(features_combined)
@@ -188,7 +194,8 @@ def calculate_xgboost_integration_scores(
     model_binary_unknown_pth,
     output_directory,
     recordings_file,
-    use_weights
+    use_weights,
+    bayesian
 ):
     
     if (model_binary_present_pth is not None) and (model_binary_unknown_pth is not None):
@@ -217,6 +224,7 @@ def calculate_xgboost_integration_scores(
             model_binary_unknown_pth,
             model_type=model_type,
             use_weights=use_weights,
+            bayesian=bayesian
         )
         # Save the model.
         if "binary" in model_type:
@@ -241,7 +249,8 @@ def calculate_xgboost_integration_scores(
         model_binary_present_pth,
         model_binary_unknown_pth,
         model_type=model_type,
-        recordings_file = recordings_file
+        recordings_file = recordings_file,
+        bayesian=bayesian
     )
     
     if (model_binary_present_pth is not None) and (model_binary_unknown_pth is not None):
@@ -334,6 +343,13 @@ if __name__ == "__main__":
         type=bool,
         help="Whether to use weights in the training data.",
         default=False,
+    )
+    parser.add_argument(
+        '--disable-bayesian', 
+        dest='bayesian', 
+        action='store_false', 
+        default=True,
+        help='Disable Bayesian features (default: Bayesian is enabled)'
     )
 
     args = parser.parse_args()

@@ -116,6 +116,7 @@ def calculate_dbres_output(
     model_binary_present_pth,
     model_binary_unknown_pth,
     recordings_file: str = "",
+    bayesian: bool = True
 ):
 
     if recalc_output:
@@ -124,9 +125,9 @@ def calculate_dbres_output(
             os.makedirs(output_directory)
 
         # Get model
-        model_binary_present = create_model(model_name, 2)
-        model_binary_unknown = create_model(model_name, 2)
-        model_binary = create_model(model_name, 2)
+        model_binary_present = create_model(model_name, 2, bayesian)
+        model_binary_unknown = create_model(model_name, 2, bayesian)
+        model_binary = create_model(model_name, 2, bayesian)
 
         # Load model
         if (model_binary_present_pth is not None) and (model_binary_unknown_pth is not None):
@@ -216,6 +217,7 @@ def calculate_dbres_scores(
     model_binary_present_pth,
     model_binary_unknown_pth,
     recordings_file: str = "",
+    bayesian: bool = True
 ):
 
     probabilities, outputs = calculate_dbres_output(
@@ -226,7 +228,8 @@ def calculate_dbres_scores(
         model_binary_pth,
         model_binary_present_pth,
         model_binary_unknown_pth,
-        recordings_file
+        recordings_file,
+        bayesian
     )
 
     if (model_binary_present_pth is not None) and (model_binary_unknown_pth is not None):
@@ -323,6 +326,13 @@ if __name__ == "__main__":
         type=str,
         help="The path to a recordings file.",
         default="",
+    )
+    parser.add_argument(
+        '--disable-bayesian', 
+        dest='bayesian', 
+        action='store_false', 
+        default=True,
+        help='Disable Bayesian features (default: Bayesian is enabled)'
     )
 
     args = parser.parse_args()

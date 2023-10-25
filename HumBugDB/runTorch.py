@@ -32,20 +32,25 @@ class ResnetFull(nn.Module):
 
 
 class ResnetDropoutFull(nn.Module):
-    def __init__(self, dropout=0.2):
+    def __init__(self, dropout=0.2, bayesian=True):
         super(ResnetDropoutFull, self).__init__()
         self.dropout = dropout
         self.resnet = resnet50dropout(
-            pretrained=hyperparameters.pretrained, dropout_p=self.dropout
+            pretrained=hyperparameters.pretrained, dropout_p=self.dropout, bayesian=bayesian
         )
         self.n_channels = 3
         # Remove final linear layer
         self.resnet = nn.Sequential(*(list(self.resnet.children())[:-1]))
         self.fc1 = nn.Linear(2048, 1)
+        self.bayesian = bayesian
 
     def forward(self, x):
+        if self.bayesian == True:
+            training = True
+        else:
+            training = self.training
         x = self.resnet(x).squeeze()
-        x = self.fc1(F.dropout(x, p=self.dropout))
+        x = self.fc1(F.dropout(x, p=self.dropout, training=training))
         x = torch.sigmoid(x)
         return x
 
