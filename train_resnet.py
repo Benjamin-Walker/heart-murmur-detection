@@ -12,8 +12,9 @@ from HumBugDB.runTorchMultiClass import ResnetFull as ResnetMulti
 from HumBugDB.runTorchMultiClass import train_model as train_model_multi
 
 
-def create_model(model_name, num_classes):
-    if model_name == "resent50":
+def create_model(model_name, num_classes, bayesian):
+    if model_name == "resnet50":
+        print("Running resnet without dropout")
         if num_classes == 2:
             model = ResnetBinary()
             training = train_model_binary
@@ -21,11 +22,12 @@ def create_model(model_name, num_classes):
             model = ResnetMulti(num_classes)
             training = train_model_multi
     elif model_name == "resnet50dropout":
+        print(f"Creating dropout model with bayesian: {bayesian}")
         if num_classes == 2:
-            model = ResnetDropoutBinary(dropout=hyperparameters.dropout)
+            model = ResnetDropoutBinary(dropout=hyperparameters.dropout, bayesian=bayesian)
             training = train_model_binary
         else:
-            model = ResnetDropoutMulti(num_classes)
+            model = ResnetDropoutMulti(n_classes=num_classes, bayesian=bayesian)
             training = train_model_multi
     else:
         raise NotImplementedError("Only implemented resnet50 and resnet50dropout")
@@ -42,10 +44,13 @@ def run_model_training(
     model_label,
     model_dir,
     classes_name,
+    bayesian,
     weights,
 ):
 
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
+    print("Using device:", device)
+
     (
         spectrograms_train,
         murmurs_train,
@@ -59,13 +64,14 @@ def run_model_training(
         vali_data_directory,
         spectrogram_directory,
     )
-
+    print("Data loaded")
+    
     X_train = spectrograms_train.to(device)
     X_test = spectrograms_test.to(device)
     if classes_name == "murmur":
         y_train = murmurs_train.to(device)
         y_test = murmurs_test.to(device)
-        model, training = create_model(model_name, 3)
+        model, training = create_model(model_name, 3, bayesian)
         training(
             X_train,
             y_train,
@@ -76,10 +82,39 @@ def run_model_training(
             model_name=model_label,
             model_dir=model_dir,
         )
-    elif classes_name == "outcome":
+    elif classes_name == "outcome_binary":
         y_train = outcomes_train.to(device)
         y_test = outcomes_test.to(device)
-        model, training = create_model(model_name, 2)
+        model, training = create_model(model_name, 2, bayesian)
+        training(
+            X_train,
+            y_train,
+            clas_weight=weights,
+            x_val=X_test,
+            y_val=y_test,
+            model=model,
+            model_name=model_label,
+            model_dir=model_dir,
+        )
+    elif classes_name == "murmur_binary":
+        knowledge_train = torch.zeros((murmurs_train.shape[0], 2))
+        for i in range(len(murmurs_train)):
+            if (
+                torch.argmax(murmurs_train[i]) == 0
+                or torch.argmax(murmurs_train[i]) == 1
+            ):
+                knowledge_train[i, 0] = 1
+            else:
+                knowledge_train[i, 1] = 1
+        knowledge_test = torch.zeros((murmurs_test.shape[0], 2))
+        for i in range(len(murmurs_test)):
+            if torch.argmax(murmurs_test[i]) == 0 or torch.argmax(murmurs_test[i]) == 1:
+                knowledge_test[i, 0] = 1
+            else:
+                knowledge_test[i, 1] = 1
+        y_train = knowledge_train.to(device)
+        y_test = knowledge_test.to(device)
+        model, training = create_model(model_name, 2, bayesian)
         training(
             X_train,
             y_train,
@@ -108,7 +143,7 @@ def run_model_training(
                 knowledge_test[i, 0] = 1
         y_train = knowledge_train.to(device)
         y_test = knowledge_test.to(device)
-        model, training = create_model(model_name, 2)
+        model, training = create_model(model_name, 2, bayesian)
         training(
             X_train,
             y_train,
@@ -137,7 +172,7 @@ def run_model_training(
                 knowledge_test[i, 0] = 1
         y_train = knowledge_train.to(device)
         y_test = knowledge_test.to(device)
-        model, training = create_model(model_name, 2)
+        model, training = create_model(model_name, 2, bayesian)
         training(
             X_train,
             y_train,
@@ -201,16 +236,22 @@ if __name__ == "__main__":
         "--model_dir",
         type=str,
         help="The directory to use when saving the model.",
-        default="models",
+        default="data/models",
     )
     parser.add_argument(
         "--classes_name",
         type=str,
         help="The name of the classes to train the model on.",
-        choices=["murmur", "outcome", "binary_present", "binary_unknown"],
+        choices=["murmur", "outcome_binary", "murmur_binary", "binary_present", "binary_unknown"],
         default="murmur",
     )
-
+    parser.add_argument(
+        '--disable-bayesian', 
+        dest='bayesian', 
+        action='store_false', 
+        default=True,
+        help='Disable Bayesian features (default: Bayesian is enabled)'
+    )
     parser.add_argument(
         "--weights_str",
         type=str,
@@ -225,5 +266,8 @@ if __name__ == "__main__":
     if args.weights_str:
         weights = [int(x) for x in args.weights_str.split(",")]
     vars(args).popitem()
+
+    print("---------------- Starting train_resnet.py for training ----------------")
+    print(f"---------------- Using data from {args.train_data_directory}")
 
     run_model_training(**vars(args), weights=weights)

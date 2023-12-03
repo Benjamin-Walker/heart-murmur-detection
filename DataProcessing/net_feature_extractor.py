@@ -121,40 +121,83 @@ def load_spectrograms(data_directory, data):
     return mel_specs
 
 
+def load_spectrograms_yaseen(file_path):
+
+    mel_specs = list()
+    recording, frequency = load_wav_file(file_path)
+    recording = recording / 32768
+    mel_spec = waveform_to_examples(recording, frequency)
+    mel_specs.append(mel_spec)
+
+    return mel_specs
+
+
+def list_wav_files(data_directory):
+    wav_files = []
+    subfolder_names = []
+
+    for root, dirs, files in os.walk(data_directory):
+        for file in files:
+            if file.endswith('.wav'):
+                wav_files.append(os.path.join(root, file))
+                subfolder_names.append(os.path.basename(root))
+    
+    return wav_files, subfolder_names
+
+
 def calc_patient_features(data_directory):
 
-    murmur_classes = ["Present", "Unknown", "Absent"]
-    num_murmur_classes = len(murmur_classes)
-    outcome_classes = ["Abnormal", "Normal"]
-    num_outcome_classes = len(outcome_classes)
+    if "yaseen" in data_directory:
+        # Get data and labels
+        outcome_classes = [f.name for f in os.scandir(data_directory) if f.is_dir()]
+        murmur_classes = outcome_classes
+        num_murmur_classes = len(murmur_classes)
+        num_outcome_classes = len(outcome_classes)
+        patient_files, labels = list_wav_files(data_directory)
+        num_patient_files = len(patient_files)
+        spectrograms = list()
+        murmurs = list()
+        outcomes = list()
+        for label, file_path in zip(labels, patient_files):
+            # Get labels in the right format
+            current_outcome = np.zeros(num_outcome_classes, dtype=int)
+            outcome =  label
+            if outcome in outcome_classes:
+                j = outcome_classes.index(outcome)
+                current_outcome[j] = 1
+            outcomes.append(current_outcome)
+            murmurs = outcomes
+            # Spectrograms
+            current_spectrograms = load_spectrograms_yaseen(file_path)
+            spectrograms.append(current_spectrograms)
 
-    # Find the patient data files.
-    patient_files = find_patient_files(data_directory)
-    num_patient_files = len(patient_files)
-    spectrograms = list()
-    murmurs = list()
-    outcomes = list()
-    for i in tqdm(range(num_patient_files)):
-
-        # Load the current patient data and recordings.
-        current_patient_data = load_patient_data(patient_files[i])
-        current_spectrograms = load_spectrograms(data_directory, current_patient_data)
-        spectrograms.append(current_spectrograms)
-        current_murmur = np.zeros(num_murmur_classes, dtype=int)
-        murmur = get_murmur(current_patient_data)
-        if murmur in murmur_classes:
-            j = murmur_classes.index(murmur)
-            current_murmur[j] = 1
-        murmurs.append(current_murmur)
-        # Outcome
-        current_outcome = np.zeros(num_outcome_classes, dtype=int)
-        outcome = get_outcome(current_patient_data)
-        if outcome in outcome_classes:
-            j = outcome_classes.index(outcome)
-            current_outcome[j] = 1
-        outcomes.append(current_outcome)
-        if murmur in murmur_classes:
-            j = murmur_classes.index(murmur)
-            current_murmur[j] = 1
+    else:
+        murmur_classes = ["Present", "Unknown", "Absent"]
+        num_murmur_classes = len(murmur_classes)
+        outcome_classes = ["Abnormal", "Normal"]
+        num_outcome_classes = len(outcome_classes)
+        patient_files = find_patient_files(data_directory)
+        num_patient_files = len(patient_files)
+        spectrograms = list()
+        murmurs = list()
+        outcomes = list()
+        for i in range(num_patient_files):
+            # Load the current patient data and recordings.
+            current_patient_data = load_patient_data(patient_files[i])
+            current_spectrograms = load_spectrograms(data_directory, current_patient_data) # Get spectrograms per patient -> Adjust for Yaseen
+            spectrograms.append(current_spectrograms)
+            current_murmur = np.zeros(num_murmur_classes, dtype=int)
+            murmur = get_murmur(current_patient_data) # -> Adjust for Yaseen
+            if murmur in murmur_classes:
+                j = murmur_classes.index(murmur)
+                current_murmur[j] = 1
+            murmurs.append(current_murmur)
+            # Outcome
+            current_outcome = np.zeros(num_outcome_classes, dtype=int)
+            outcome = get_outcome(current_patient_data) # -> Adjust for Yaseen
+            if outcome in outcome_classes:
+                j = outcome_classes.index(outcome)
+                current_outcome[j] = 1
+            outcomes.append(current_outcome)
 
     return spectrograms, murmurs, outcomes

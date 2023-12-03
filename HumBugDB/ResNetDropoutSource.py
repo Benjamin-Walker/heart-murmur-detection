@@ -26,6 +26,7 @@ class BasicBlockDropout(nn.Module):
 
     def __init__(
         self,
+        bayesian: bool,
         inplanes: int,
         planes: int,
         stride: int = 1,
@@ -51,14 +52,20 @@ class BasicBlockDropout(nn.Module):
         self.downsample = downsample
         self.stride = stride
         self.dropout_p = dropout_p
+        self.bayesian = bayesian
 
     def forward(self, x: Tensor) -> Tensor:
         identity = x
 
+        if self.bayesian == True:
+            training = True
+        else:
+            training = self.training
+
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-        out = F.dropout(out, p=self.dropout_p)  # Added
+        out = F.dropout(out, p=self.dropout_p, training=training)  # Added
 
         out = self.conv2(out)
         out = self.bn2(out)
@@ -68,7 +75,7 @@ class BasicBlockDropout(nn.Module):
 
         out += identity
         out = self.relu(out)
-        out = F.dropout(out, p=self.dropout_p)  # Added
+        out = F.dropout(out, p=self.dropout_p, training=training)  # Added
 
         return out
 
@@ -86,6 +93,7 @@ class BottleneckDropout(nn.Module):
 
     def __init__(
         self,
+        bayesian: bool,
         inplanes: int,
         planes: int,
         stride: int = 1,
@@ -110,19 +118,25 @@ class BottleneckDropout(nn.Module):
         self.downsample = downsample
         self.stride = stride
         self.dropout_p = dropout_p
+        self.bayesian = bayesian
 
     def forward(self, x: Tensor) -> Tensor:
         identity = x
 
+        if self.bayesian == True:
+            training = True
+        else:
+            training = self.training
+
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-        out = F.dropout(out, p=self.dropout_p)  # Added
+        out = F.dropout(out, p=self.dropout_p, training=training)  # Added
 
         out = self.conv2(out)
         out = self.bn2(out)
         out = self.relu(out)
-        out = F.dropout(out, p=self.dropout_p)  # Added
+        out = F.dropout(out, p=self.dropout_p, training=training)  # Added
 
         out = self.conv3(out)
         out = self.bn3(out)
@@ -132,7 +146,7 @@ class BottleneckDropout(nn.Module):
 
         out += identity
         out = self.relu(out)
-        out = F.dropout(out, p=self.dropout_p)  # Added
+        out = F.dropout(out, p=self.dropout_p, training=training)  # Added
 
         return out
 
@@ -142,6 +156,7 @@ class ResNet(nn.Module):
         self,
         block: Type[Union[BasicBlockDropout, BottleneckDropout]],
         layers: List[int],
+        bayesian: bool,
         num_classes: int = 1000,
         zero_init_residual: bool = False,
         groups: int = 1,
@@ -155,7 +170,7 @@ class ResNet(nn.Module):
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
         self.dropout_p = dropout_p
-
+        self.bayesian = bayesian
         self.inplanes = 64
         self.dilation = 1
         if replace_stride_with_dilation is None:
@@ -228,6 +243,7 @@ class ResNet(nn.Module):
         layers = []
         layers.append(
             block(
+                self.bayesian,
                 self.inplanes,
                 planes,
                 stride,
@@ -242,6 +258,7 @@ class ResNet(nn.Module):
         for _ in range(1, blocks):
             layers.append(
                 block(
+                    self.bayesian,
                     self.inplanes,
                     planes,
                     groups=self.groups,
@@ -254,11 +271,17 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def _forward_impl(self, x: Tensor) -> Tensor:
+
+        if self.bayesian == True:
+            training = True
+        else:
+            training = self.training
+
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
         x = self.maxpool(x)
-        x = F.dropout_p(x, p=self.dropout_p)  # Added
+        x = F.dropout_p(x, p=self.dropout_p, training=training)  # Added
 
         x = self.layer1(x)
         x = self.layer2(x)
@@ -266,7 +289,7 @@ class ResNet(nn.Module):
         x = self.layer4(x)
 
         x = self.avgpool(x)
-        x = F.dropout_p(x, p=self.dropout_p)  # Added
+        x = F.dropout_p(x, p=self.dropout_p, training=training)  # Added
         x = torch.flatten(x, 1)
         x = self.fc(x)
 
@@ -282,9 +305,10 @@ def _resnet(
     layers: List[int],
     pretrained: bool,
     progress: bool,
+    bayesian: bool,
     **kwargs: Any
 ) -> ResNet:
-    model = ResNet(block, layers, **kwargs)
+    model = ResNet(block, layers, bayesian, **kwargs)
     if pretrained:
         state_dict = load_state_dict_from_url(model_urls[arch], progress=progress)
         model.load_state_dict(state_dict)
@@ -292,7 +316,7 @@ def _resnet(
 
 
 def resnet50dropout(
-    pretrained: bool = False, progress: bool = True, **kwargs: Any
+    pretrained: bool = False, progress: bool = True, bayesian: bool = True, **kwargs: Any
 ) -> ResNet:
     """ResNet-50 model from
     "Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>.
@@ -302,5 +326,5 @@ def resnet50dropout(
         progress (bool): If True, displays a progress bar of the download to stderr
     """
     return _resnet(
-        "resnet50", BottleneckDropout, [3, 4, 6, 3], pretrained, progress, **kwargs
+        "resnet50", BottleneckDropout, [3, 4, 6, 3], pretrained, progress, bayesian, **kwargs
     )

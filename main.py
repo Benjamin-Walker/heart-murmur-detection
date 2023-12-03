@@ -2,22 +2,23 @@ import argparse
 import os
 
 from dbres import calculate_dbres_scores
-from stratified_data_split import stratified_test_vali_split
+from data_splits import stratified_test_vali_split
 from train_resnet import run_model_training
 from xgboost_integration import calculate_xgboost_integration_scores
 
 
 def main(
-    full_data_directory,
+    data_directory,
     stratified_directory,
     test_size,
     vali_size,
-    random_state,
+    cv,
     recalc_features,
     spectrogram_directory,
     model_name,
     recalc_output,
     dbres_output_directory,
+    bayesian
 ):
 
     train_data_directory = os.path.join(stratified_directory, "train_data")
@@ -28,11 +29,11 @@ def main(
 
     stratified_test_vali_split(
         stratified_features,
-        full_data_directory,
+        data_directory,
         stratified_directory,
         test_size,
         vali_size,
-        random_state,
+        cv,
     )
 
     run_model_training(
@@ -42,8 +43,9 @@ def main(
         spectrogram_directory,
         model_name,
         "BinaryPresent",
-        "models",
+        "data/models",
         "binary_present",
+        bayesian,
         None,
     )
 
@@ -54,8 +56,9 @@ def main(
         spectrogram_directory,
         model_name,
         "BinaryUnknown",
-        "models",
+        "data/models",
         "binary_unknown",
+        bayesian,
         None,
     )
 
@@ -63,16 +66,17 @@ def main(
         recalc_output,
         test_data_directory,
         dbres_output_directory,
-        "models/model_BinaryPresent.pth",
-        "models/model_BinaryUnknown.pth",
+        "data/models/model_BinaryPresent.pth",
+        "data/models/model_BinaryUnknown.pth",
     )
 
     xgb_scores = calculate_xgboost_integration_scores(
         train_data_directory,
         test_data_directory,
         dbres_output_directory,
-        "models/model_BinaryPresent.pth",
-        "models/model_BinaryUnknown.pth",
+        "data/models/model_BinaryPresent.pth",
+        "data/models/model_BinaryUnknown.pth",
+        bayesian=bayesian
     )
 
     return dbres_scores, xgb_scores
@@ -82,7 +86,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(prog="DBResAndXGBoostIntegration")
     parser.add_argument(
-        "--full_data_directory",
+        "--data_directory",
         type=str,
         help="The directory containing all of the data.",
         default="physionet.org/files/circor-heart-sound/1.0.3/training_data",
@@ -100,7 +104,7 @@ if __name__ == "__main__":
         "--test_size", type=float, default=0.2, help="The size of the test split."
     )
     parser.add_argument(
-        "--random_state", type=int, default=5678, help="The random state for the split."
+        "--cv", type=bool, default=False, help="Whether to run cv."
     )
     parser.add_argument(
         "--recalc_features",
@@ -140,7 +144,19 @@ if __name__ == "__main__":
         help="The directory in which DBRes's output is saved.",
         default="data/dbres_outputs",
     )
+    parser.add_argument(
+        '--disable-bayesian', 
+        dest='bayesian', 
+        action='store_false', 
+        default=True,
+        help='Disable Bayesian features (default: Bayesian is enabled)'
+    )
 
     args = parser.parse_args()
+
+    if "dropout" in args.model_name:
+        args["bayesian"] = True
+    else:
+        args["bayesian"] = False
 
     dbres_scores, xgb_scores = main(**vars(args))

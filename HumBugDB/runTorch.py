@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+import time
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -31,20 +32,25 @@ class ResnetFull(nn.Module):
 
 
 class ResnetDropoutFull(nn.Module):
-    def __init__(self, dropout=0.2):
+    def __init__(self, dropout=0.2, bayesian=True):
         super(ResnetDropoutFull, self).__init__()
         self.dropout = dropout
         self.resnet = resnet50dropout(
-            pretrained=hyperparameters.pretrained, dropout_p=self.dropout
+            pretrained=hyperparameters.pretrained, dropout_p=self.dropout, bayesian=bayesian
         )
         self.n_channels = 3
         # Remove final linear layer
         self.resnet = nn.Sequential(*(list(self.resnet.children())[:-1]))
         self.fc1 = nn.Linear(2048, 1)
+        self.bayesian = bayesian
 
     def forward(self, x):
+        if self.bayesian == True:
+            training = True
+        else:
+            training = self.training
         x = self.resnet(x).squeeze()
-        x = self.fc1(F.dropout(x, p=self.dropout))
+        x = self.fc1(F.dropout(x, p=self.dropout, training=training))
         x = torch.sigmoid(x)
         return x
 
@@ -66,8 +72,8 @@ def make_weights_for_balanced_classes(images, nclasses):
 def build_dataloader(
     x_train, y_train, x_val=None, y_val=None, shuffle=True, sampler=None
 ):
-    x_train = torch.tensor(x_train).float()
-    y_train = torch.tensor(y_train).float()
+    x_train = x_train.clone().detach().float() #torch.tensor(x_train).float()
+    y_train = y_train.clone().detach().float() #torch.tensor(y_train).float()
     train_dataset = TensorDataset(x_train, y_train)
     if sampler is None:
         train_loader = DataLoader(
@@ -82,8 +88,8 @@ def build_dataloader(
         )
 
     if x_val is not None:
-        x_val = torch.tensor(x_val).float()
-        y_val = torch.tensor(y_val).float()
+        x_val = x_val.clone().detach().float() #torch.tensor(x_val).float()
+        y_val = y_val.clone().detach().float() #torch.tensor(y_val).float()
         val_dataset = TensorDataset(x_val, y_val)
         val_loader = DataLoader(
             val_dataset, batch_size=hyperparameters.batch_size, shuffle=shuffle
@@ -116,7 +122,7 @@ def train_model(
     else:
         train_loader = build_dataloader(x_train, y_train, sampler=sampler)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
     if torch.cuda.device_count() > 1:
         print("Using data parallel")
@@ -135,15 +141,17 @@ def train_model(
     best_val_acc = -np.inf
 
     best_train_acc = -np.inf
-
+    e_saved = None
+    output_string_to_save = ""
     overrun_counter = 0
     for e in range(hyperparameters.epochs):
+        start_time = time.time()
         train_loss = 0.0
         model.train()
 
         all_y = []
         all_y_pred = []
-        for batch_i, inputs in tqdm(enumerate(train_loader), total=len(train_loader)):
+        for batch_i, inputs in enumerate(train_loader):
 
             x = inputs[:-1][0].repeat(1, 3, 1, 1)
             y = torch.argmax(inputs[1], dim=1, keepdim=True).float()
@@ -192,7 +200,7 @@ def train_model(
         if acc_metric > best_acc_metric:
 
             checkpoint_name = f"model_{model_name}.pth"
-
+            e_saved = e
             torch.save(
                 model.state_dict(),
                 os.path.join(model_dir, checkpoint_name),
@@ -208,7 +216,7 @@ def train_model(
 
         overrun_counter += 1
         if x_val is not None:
-            print(
+            output_string = (
                 "Epoch: %d, Train Loss: %.8f, Train Acc: %.8f, Val Loss: %.8f, "
                 "Val Acc: %.8f, overrun_counter %i"
                 % (
@@ -221,19 +229,39 @@ def train_model(
                 )
             )
         else:
-            print(
+            output_string = (
                 "Epoch: %d, Train Loss: %.8f, Train Acc: %.8f, overrun_counter %i"
                 % (e, train_loss / len(train_loader), train_metric, overrun_counter)
             )
+        print(output_string)
+        output_string_to_save += output_string + "\n"
+        print(f"Training epoch {e} took {round((time.time()-start_time)/60,4)} min.")
         if overrun_counter > hyperparameters.max_overrun:
             break
+    
+    if e_saved is not None:
+        checkpoint_name = f"model_{model_name}_final.pth"
+        torch.save(
+            model.state_dict(),
+            os.path.join(model_dir, checkpoint_name),
+        )
+        print(
+            "Saving model to:",
+            os.path.join(model_dir, checkpoint_name),
+        )
+
+    # Save output string
+    output_string_to_save += f"Best epoch: {e_saved}\n"
+    with open(os.path.join(model_dir, f"output_{model_name}.txt"), "w") as f:
+        f.write(output_string_to_save)
+
     return model
 
 
 def test_model(model, test_loader, clas_weight, criterion, device=None):
     with torch.no_grad():
         if device is None:
-            torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
         test_loss = 0.0
         model.eval()
@@ -280,7 +308,7 @@ def test_model(model, test_loader, clas_weight, criterion, device=None):
 
 def load_model(filepath, model=ResnetDropoutFull()):
 
-    device = torch.device("cuda" if torch.cuda.is_available() else torch.device("cpu"))
+    device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
     if torch.cuda.device_count() > 1:
         print("Using data parallel")
@@ -291,6 +319,8 @@ def load_model(filepath, model=ResnetDropoutFull()):
 
     if torch.cuda.is_available():
         map_location = lambda storage, loc: storage.cuda()
+    elif torch.backends.mps.is_available():
+        map_location = lambda storage, loc: storage.mps()
     else:
         map_location = torch.device("cpu")
     model.load_state_dict(torch.load(filepath, map_location=map_location))

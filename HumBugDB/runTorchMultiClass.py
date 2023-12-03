@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+import time
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -30,11 +31,12 @@ class ResnetFull(nn.Module):
 
 
 class ResnetDropoutFull(nn.Module):
-    def __init__(self, n_classes, dropout=0.2):
+    def __init__(self, n_classes, bayesian=True, dropout=0.2):
         super(ResnetDropoutFull, self).__init__()
         self.dropout = dropout
+        self.bayesian = bayesian
         self.resnet = resnet50dropout(
-            pretrained=hyperparameters.pretrained, dropout_p=self.dropout
+            pretrained=hyperparameters.pretrained, dropout_p=self.dropout, bayesian=bayesian
         )
 
         self.n_channels = 3
@@ -43,8 +45,12 @@ class ResnetDropoutFull(nn.Module):
         self.fc1 = nn.Linear(2048, n_classes)
 
     def forward(self, x):
+        if self.bayesian == True:
+            training = True
+        else:
+            training = self.training
         x = self.resnet(x).squeeze()
-        x = self.fc1(F.dropout(x, p=self.dropout))
+        x = self.fc1(F.dropout(x, p=self.dropout, training=training))
         return x
 
 
@@ -85,7 +91,7 @@ def train_model(
     else:
         train_loader = build_dataloader(x_train, y_train)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
     if torch.cuda.device_count() > 1:
         print("Using data parallel")
@@ -111,6 +117,7 @@ def train_model(
     overrun_counter = 0
 
     for e in range(hyperparameters.epochs):
+        start_time = time.time()
         train_loss = 0.0
         model.train()
 
@@ -185,6 +192,7 @@ def train_model(
                 "Epoch: %d, Train Loss: %.8f, Train Acc: %.8f, overrun_counter %i"
                 % (e, train_loss / len(train_loader), train_acc, overrun_counter)
             )
+        print(f"Training epoch {e} took {round((time.time()-start_time)/60,4)} min.")
         if overrun_counter > hyperparameters.max_overrun:
             break
     return model
@@ -193,7 +201,7 @@ def train_model(
 def test_model(model, test_loader, criterion, device=None):
     with torch.no_grad():
         if device is None:
-            torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
         test_loss = 0.0
         model.eval()
