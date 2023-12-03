@@ -7,6 +7,9 @@ Pipfile.lock
 **.xlsx
 *.pyc
 **/*.pyc
+launch.json
+**.vscode
+**output_files
 
 data/*
 !data/e_challenge_anaylsis/

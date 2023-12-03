@@ -34,7 +34,7 @@ from DataProcessing.label_extraction import get_murmur, get_outcome
 
 
 # Evaluate the models.
-def evaluate_model(label_folder, output_probabilities, output_labels, model_type, recordings_file: str="", output_directory: str=""):
+def evaluate_model(label_folder, output_probabilities, output_labels, model_type, recordings_file: str="", output_directory: str="", true_labels = None):
 
     # Define murmur and outcome classes.
     if model_type == "murmur":
@@ -65,16 +65,32 @@ def evaluate_model(label_folder, output_probabilities, output_labels, model_type
                 if compare_strings(label, x):
                     true_labels[i, j] = 1
     else:
-        print("Using labels file for evaluation.")
-        label_files = find_challenge_files(label_folder)
-        if model_type == "murmur":
-            true_labels = load_murmurs(label_files, class_options)
-        elif model_type == "outcome_binary":
-            true_labels = load_outcomes(label_files, class_options)
-        elif model_type == "murmur_binary":
-            true_labels = load_binary_murmurs(label_files, class_options)
+        if "yaseen" in label_folder:
+            num_patients = len(true_labels)
+            num_classes = len(class_options)
+
+            # Use one-hot encoding for the labels.
+            labels = np.zeros((num_patients, num_classes), dtype=np.bool_)
+
+            # Iterate over the patients.
+            for i in range(num_patients):
+                label = true_labels[i]
+                for j, x in enumerate(class_options):
+                    if compare_strings(label, x):
+                        labels[i, j] = 1
+                
+            true_labels = labels
         else:
-            raise ValueError("Unknown model type: {}".format(model_type))
+            print("Using labels file for evaluation.")
+            label_files = find_challenge_files(label_folder)
+            if model_type == "murmur":
+                true_labels = load_murmurs(label_files, class_options)
+            elif model_type == "outcome_binary":
+                true_labels = load_outcomes(label_files, class_options)
+            elif model_type == "murmur_binary":
+                true_labels = load_binary_murmurs(label_files, class_options)
+            else:
+                raise ValueError("Unknown model type: {}".format(model_type))
 
     # For each patient, set the 'Present' or 'Abnormal' class to positive if no
     # class is positive or if multiple classes are positive.
@@ -227,7 +243,7 @@ def find_challenge_files(label_folder):
     if label_files:
         return label_files
     else:
-        raise IOError("No label or output files found.")
+        raise IOError(f"No label or output files found in {label_folder}.")
 
 
 # Load murmurs from label files.

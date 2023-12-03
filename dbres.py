@@ -11,12 +11,26 @@ from DataProcessing.find_and_load_patient_files import (
     load_patient_data,
 )
 from DataProcessing.helper_code import get_num_locations, load_recordings, load_wav_file
+from DataProcessing.net_feature_extractor import load_spectrograms_yaseen, load_spectrograms_yaseen
 from HumBugDB.LogMelSpecs.compute_LogMelSpecs import waveform_to_examples
 from HumBugDB.runTorch import load_model
 from ModelEvaluation.evaluate_model import evaluate_model
 from train_resnet import create_model
 
 from Config import hyperparameters
+
+
+def list_wav_files(data_directory):
+    wav_files = []
+    subfolder_names = []
+
+    for root, dirs, files in os.walk(data_directory):
+        for file in files:
+            if file.endswith('.wav'):
+                wav_files.append(os.path.join(root, file))
+                subfolder_names.append(os.path.basename(root))
+    
+    return wav_files, subfolder_names
 
 
 def get_binary_spectrogram_outputs(
@@ -150,14 +164,21 @@ def calculate_dbres_output(
         # Get data
         murmur_probabilities = list()
         murmur_outputs = list()
+        labels = None
         if len(recordings_file) > 0:
             patient_files = pd.read_csv(recordings_file)
         else:
-            patient_files = find_patient_files(data_directory)
+            if "yaseen" in data_directory:
+                outcome_classes = [f.name for f in os.scandir(data_directory) if f.is_dir()]
+                murmur_classes = outcome_classes
+                patient_files, labels = list_wav_files(data_directory)
+            else:
+                patient_files = find_patient_files(data_directory)
 
         # Get count of patient files
         num_patient_files = len(patient_files)
         if num_patient_files == 0:
+            print(f"No data was provided in {data_directory} for recordings_file {recordings_file}.")
             raise Exception("No data was provided.")
         
         # Get spectrograms and predictions
@@ -170,19 +191,25 @@ def calculate_dbres_output(
                 sample_rate = frequency
                 num_locations = 1
             else:
-                sample_rate=hyperparameters.SAMPLE_RATE
-                current_patient_data = load_patient_data(patient_files[i])
-                current_recordings = load_recordings(data_directory, current_patient_data)
-                num_locations = get_num_locations(current_patient_data)
+                if "yaseen" in data_directory:
+                    pass
+                else:
+                    sample_rate=hyperparameters.SAMPLE_RATE
+                    current_patient_data = load_patient_data(patient_files[i])
+                    current_recordings = load_recordings(data_directory, current_patient_data)
+                    num_locations = get_num_locations(current_patient_data)
 
             # Get spectrograms
-            current_recordings = [r / 32768 for r in current_recordings]
-            spectrograms = list()
-            for j in range(num_locations):
-                mel_spec = waveform_to_examples(
-                    data=current_recordings[j], sample_rate=sample_rate
-                )
-                spectrograms.append(mel_spec)
+            if "yaseen" in data_directory:
+                spectrograms = load_spectrograms_yaseen(patient_files[i])
+            else:
+                current_recordings = [r / 32768 for r in current_recordings]
+                spectrograms = list()
+                for j in range(num_locations):
+                    mel_spec = waveform_to_examples(
+                        data=current_recordings[j], sample_rate=sample_rate
+                    )
+                    spectrograms.append(mel_spec)
 
             # Get predictions
             murmur_output, murmur_probability = get_binary_spectrogram_outputs(
@@ -205,7 +232,7 @@ def calculate_dbres_output(
         )
         murmur_outputs = np.load(os.path.join(output_directory, "outputs.npy"))
 
-    return murmur_probabilities, murmur_outputs
+    return murmur_probabilities, murmur_outputs, labels
 
 
 def calculate_dbres_scores(
@@ -220,7 +247,7 @@ def calculate_dbres_scores(
     bayesian: bool = True
 ):
 
-    probabilities, outputs = calculate_dbres_output(
+    probabilities, outputs, labels = calculate_dbres_output(
         model_name,
         recalc_output,
         data_directory,
@@ -235,9 +262,9 @@ def calculate_dbres_scores(
     if (model_binary_present_pth is not None) and (model_binary_unknown_pth is not None):
         model_type = "murmur"
     elif model_binary_pth is not None:
-        if "MurmurBinary" in model_binary_pth:
+        if ("MurmurBinary" in model_binary_pth) or ("Murmur_Binary" in model_binary_pth):
             model_type = "murmur_binary"
-        elif "OutcomeBinary" in model_binary_pth:
+        elif ("OutcomeBinary" in model_binary_pth) or ("Outcome_Binary" in model_binary_pth):
             model_type = "outcome_binary"
         else:
             raise Exception("No binary murmur or outcome model was provided.")
@@ -245,7 +272,10 @@ def calculate_dbres_scores(
         raise Exception("No model was provided.")
     
     print(f"--- Evaluating {model_type} model ---")
-    scores = evaluate_model(data_directory, probabilities, outputs, model_type, recordings_file = recordings_file, output_directory = output_directory)
+    if "yaseen" in data_directory:
+        scores = evaluate_model(data_directory, probabilities, outputs, model_type, recordings_file = recordings_file, output_directory = output_directory, true_labels = labels)
+    else:
+        scores = evaluate_model(data_directory, probabilities, outputs, model_type, recordings_file = recordings_file, output_directory = output_directory)
 
     print("--- DBRes scores ---")
     print(f"{scores}")
